@@ -1,0 +1,11 @@
+{
+  "name": "qianli-yunchou",
+  "private": true,
+  "type": "module",
+  "description": "千里江山·运筹录：水墨风格的运筹学闯关游戏",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "build": "node build/build.mjs",
+    "dev": "python3 -m http.server 8000"
+  }
+}

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>千里江山·运筹录</title>
+<meta name="description" content="水墨风格的运筹学闯关游戏：在一幅自右向左展开的长卷里，参透一处，着一处青绿。">
+<!--BUILD:FONTS-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap">
+<!--/BUILD:FONTS-->
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div id="scroll" aria-label="千里江山长卷，可左右拖动">
+    <div id="track"><div id="life"></div><div id="marks"></div></div>
+  </div>
+
+  <div id="hud">
+    <div class="count" title="已钤印的关卡">钤印 <b id="sealCount">0</b> / 11</div>
+    <button class="btn red" id="nextBtn">下一处 ←</button>
+    <button class="btn" id="previewBtn" aria-pressed="false">终卷预览</button>
+    <button class="btn" id="sndBtn" aria-pressed="false">琴声 · 关</button>
+    <div class="brand"><b>千里江山 · 运筹录</b></div>
+  </div>
+  <div id="hint">手卷自右向左展开　·　拖动观卷　·　点题签入画</div>
+  <div id="loading">研墨中</div>
+
+  <div id="curtain"><div class="veil"></div><div class="roller"></div></div>
+  <div id="cover">
+    <div class="rolled">
+      <div class="intro"><q>运筹帷幄之中，决胜千里之外</q>——《史记·高祖本纪》<br>「运筹学」这个中文译名，正出自这一句。</div>
+      <div class="rod"><div class="label">千里江山 · 运筹录</div></div>
+      <button class="btn red" id="openBtn" style="font-size:16px;padding:10px 28px;letter-spacing:.4em">展 卷</button>
+    </div>
+  </div>
+
+  <div class="modal" id="leafModal" hidden>
+    <div class="leaf" role="dialog" aria-modal="true" aria-labelledby="leafName">
+      <div class="in">
+        <div class="vt"><div class="n" id="leafName"></div><div class="c" id="leafConcept"></div></div>
+        <dl>
+          <div><dt>故 事</dt><dd id="leafStory"></dd></div>
+          <div><dt>玩 法</dt><dd id="leafPlay"></dd></div>
+          <div><dt>顿 悟</dt><dd class="aha" id="leafAha"></dd></div>
+        </dl>
+        <div class="acts" id="leafActs"></div>
+      </div>
+      <button class="x" id="leafX" aria-label="合上">✕</button>
+    </div>
+  </div>
+
+  <div id="level" hidden>
+    <div class="bar">
+      <div class="ttl"><b id="lvName"></b><span id="lvStageName"></span></div>
+      <div id="lvMeter"></div>
+      <button class="btn" id="lvClose">回长卷</button>
+    </div>
+    <div id="lvMain">
+      <div id="lvStage"></div>
+      <div id="result" hidden>
+        <div class="grade" id="rGrade"></div>
+        <div class="nums" id="rNums"></div>
+        <div class="line" id="rLine"></div>
+      </div>
+    </div>
+    <div class="foot">
+      <div class="say" id="say" aria-live="polite"></div>
+      <div class="acts" id="acts"></div>
+    </div>
+  </div>
+
+  <div id="colo" hidden>
+    <div class="sheet"><div class="page">
+      <div class="v" id="coloV"></div>
+      <button class="btn red" id="coloBack">钤印 · 回到长卷</button>
+    </div></div>
+  </div>
+</div>
+<script type="module" src="main.js"></script>
+</body>
+</html>
