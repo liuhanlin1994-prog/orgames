@@ -446,3 +446,28 @@ button.hc:hover{transform:translateY(-2px);box-shadow:0 4px 10px -4px rgba(40,25
 .pk-item.arrive{animation:pkArrive .35s ease-out}
 @keyframes pkArrive{from{transform:translateX(40px) scale(.85);opacity:0}}
 @media (max-width:560px){.pk-from b{font-size:18px}.pk-from{min-height:44px}.pk-from canvas{height:44px;width:34px}.pk-sets .st b{font-size:14px;min-width:4.2em}.pk-sets span{width:20px;height:20px;line-height:19px;font-size:12px}}
+/* 斗宝：摊棚、宝物、买家、出价尺、账簿 */
+.au{position:absolute;inset:0;display:flex;flex-direction:column}
+.au-scene{position:relative;flex:1;min-height:0;overflow:hidden}
+.au-scene>canvas{position:absolute;inset:0;width:100%;height:100%}
+.au-scene>canvas.au-review{inset:8px;width:calc(100% - 16px);height:calc(100% - 16px);z-index:4;box-shadow:0 8px 20px -10px rgba(40,25,5,.45)}
+.au-lot{position:absolute;left:12px;top:10px;z-index:3;display:flex;flex-direction:column;gap:2px;background:rgba(247,241,227,.82);border:1px solid rgba(60,50,30,.2);padding:6px 12px 8px;min-width:130px}
+.au-lot small{font-size:12px;color:var(--ink-3)}
+.au-lot b{font-family:var(--brush);font-weight:400;font-size:26px;color:var(--ink);letter-spacing:.1em;line-height:1.1}
+.au-lot .eye{font-size:13px;color:var(--ink-2)}.au-lot .eye.sharp{color:var(--malachite,#2e6e50)}.au-lot .eye.blur{color:var(--cinnabar)}
+.au-lot .rc-incense{margin:4px 0 0}
+.au-price{position:absolute;z-index:3;display:flex;white-space:nowrap;align-items:baseline;gap:4px;background:rgba(40,30,20,.86);color:#f3e6c8;padding:4px 10px;border-radius:2px;transform:translateX(-10%)}
+.au-price b{font-family:var(--brush);font-weight:400;font-size:34px;color:#ffd27a;min-width:2.2em;text-align:right;font-variant-numeric:tabular-nums}
+.au-price small{font-size:12px}
+.au-name{position:absolute;z-index:2;transform:translate(-50%,-100%);font-family:var(--brush);font-size:15px;color:var(--ink-2);white-space:nowrap;background:rgba(247,241,227,.7);padding:0 4px}
+.au-ledger{position:absolute;right:10px;top:10px;z-index:3;background:rgba(247,241,227,.88);border:1px solid rgba(60,50,30,.22);padding:6px 10px;font-size:13px;min-width:150px}
+.au-ledger .lt{font-family:var(--brush);font-size:17px;color:var(--ink);margin-bottom:2px}.au-ledger .lt small{font-family:sans-serif;font-size:11px;color:var(--ink-3);margin-left:4px}
+.au-ledger .lr{display:grid;grid-template-columns:1fr 1.6em 3.2em;gap:4px;align-items:baseline;line-height:1.55}
+.au-ledger .lr i{font-style:normal;color:var(--ink-3);text-align:right}.au-ledger .lr b{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.au-ledger .lr b.neg{color:var(--cinnabar)}.au-ledger .lr.me span{color:var(--ink);font-weight:600}.au-ledger .lr.ghost{color:var(--ink-3)}
+.au-ledger .lr.duo{grid-template-columns:1fr 3.2em}
+.au-rwrap{position:relative;flex:none;height:164px;border-top:1px solid rgba(60,50,30,.2);background:rgba(247,241,227,.75)}
+.au-rhint{position:absolute;left:12px;top:4px;font-size:13px;color:var(--ink-2);pointer-events:none;z-index:1}.au-rhint b{font-family:var(--brush);font-weight:400;font-size:19px;color:var(--cinnabar)}
+.au-ruler{position:absolute;left:0;right:0;top:22px;bottom:0;width:100%;height:calc(100% - 22px);display:block;touch-action:none;cursor:pointer}
+.au-ruler:focus-visible{outline:2px solid rgba(30,91,115,.5);outline-offset:-2px}
+@media (max-width:640px){.au-lot{padding:4px 8px 6px;min-width:0}.au-lot b{font-size:20px}.au-ledger{font-size:11.5px;min-width:0;padding:4px 7px}.au-ledger .lt{font-size:14px}.au-name{font-size:12px}.au-price b{font-size:26px}.au-rwrap{height:156px}}
