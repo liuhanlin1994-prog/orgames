@@ -12,8 +12,9 @@ import {gateLevel} from './levels/gate.js';
 import {innLevel} from './levels/inn.js';
 import {packLevel} from './levels/pack.js';
 import {auctionLevel} from './levels/auction.js';
+import {beansLevel} from './levels/beans.js';
 
-const MODULES={tsp:tspLevel,tea:teaLevel,horse:horseLevel,race:raceLevel,gate:gateLevel,inn:innLevel,pack:packLevel,auction:auctionLevel};
+const MODULES={tsp:tspLevel,tea:teaLevel,horse:horseLevel,race:raceLevel,gate:gateLevel,inn:innLevel,pack:packLevel,auction:auctionLevel,beans:beansLevel};
 const audio=createAudio();
 const ui=createLevelUI(audio);
 const store={get:k=>{try{return localStorage.getItem(k);}catch(e){return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}};

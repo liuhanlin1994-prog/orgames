@@ -471,3 +471,19 @@ button.hc:hover{transform:translateY(-2px);box-shadow:0 4px 10px -4px rgba(40,25
 .au-ruler{position:absolute;left:0;right:0;top:22px;bottom:0;width:100%;height:calc(100% - 22px);display:block;touch-action:none;cursor:pointer}
 .au-ruler:focus-visible{outline:2px solid rgba(30,91,115,.5);outline-offset:-2px}
 @media (max-width:640px){.au-lot{padding:4px 8px 6px;min-width:0}.au-lot b{font-size:20px}.au-ledger{font-size:11.5px;min-width:0;padding:4px 7px}.au-ledger .lt{font-size:14px}.au-name{font-size:12px}.au-price b{font-size:26px}.au-rwrap{height:156px}}
+/* 撒豆：方田、舆图、账、喇叭口 */
+.bn{position:absolute;inset:0}
+.bn-map{position:absolute;box-shadow:0 10px 24px -14px rgba(40,25,5,.55)}
+.bn-map canvas{position:absolute;inset:0;width:100%;height:100%}
+.bn-map canvas:last-child{touch-action:none;cursor:crosshair}
+.bn-panel{position:absolute;display:flex;flex-direction:column;gap:8px;min-height:0}
+.bn-stats{background:rgba(247,241,227,.85);border:1px solid rgba(60,50,30,.22);padding:8px 12px;display:flex;flex-direction:column;gap:4px;font-size:13.5px;color:var(--ink-2)}
+.bn-stats .big{display:flex;align-items:baseline;gap:6px}.bn-stats .big small{font-size:13px;color:var(--ink-3)}
+.bn-stats .big b{font-family:var(--brush);font-weight:400;font-size:40px;line-height:1.05;color:var(--cinnabar);font-variant-numeric:tabular-nums}
+.bn-stats .row{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}.bn-stats .row b{font-variant-numeric:tabular-nums;color:var(--ink)}
+.bn-stats .row b.ok{color:var(--malachite)}.bn-stats .row b.bad,.bn-stats .ledger b.bad{color:var(--cinnabar)}.bn-stats .row b.gold{color:#9a6a1a;font-size:15px}
+.bn-stats .sm,.bn-note .sm{font-size:12px;color:var(--ink-3)}
+.bn-stats .ledger{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;border-top:1px dashed rgba(60,50,30,.2);padding-top:4px}.bn-stats .ledger:empty{display:none}
+.bn-chart{flex:1;min-height:110px;width:100%;background:rgba(247,241,227,.7);border:1px solid rgba(60,50,30,.18)}
+.bn-note{font-size:13px;color:var(--ink-2);line-height:1.6}.bn-note b{color:var(--cinnabar)}
+@media (max-width:640px){.bn-stats{padding:6px 10px;font-size:12.5px;gap:2px}.bn-stats .big b{font-size:30px}.bn-chart{min-height:90px}.bn-note{font-size:12px}}
