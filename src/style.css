@@ -388,7 +388,7 @@ button.hc:hover{transform:translateY(-2px);box-shadow:0 4px 10px -4px rgba(40,25
 .inn-hint em{font-style:normal;background:var(--cinnabar);color:#fff;padding:0 6px;margin-left:4px;font-size:12px}
 .inn-review{bottom:auto;top:auto;bottom:74px}
 @media (max-width:560px){.inn-hud{font-size:12px;padding:4px 8px}.inn-hud b{font-size:16px}.inn-hud .ih-date{font-size:18px}.inn-price{left:6px;right:6px;justify-content:center;bottom:6px}.inn-hint{bottom:auto;left:auto;right:6px;top:62px}.inn-review{bottom:66px}}
-/* 长亭：书箱格子、物件、案台 */
+/* 长亭：书箱格子、物件、递来的一件、留在长亭 */
 .pk{position:absolute;inset:0;overflow:hidden}
 .pk canvas.pk-bg{position:absolute;inset:0;width:100%;height:100%}
 .pk-bar{position:relative;z-index:3;display:flex;align-items:center;gap:6px 12px;padding:6px 12px;min-height:42px;border-bottom:1px solid rgba(60,50,30,.18);font-size:14px;color:var(--ink-2);flex-wrap:wrap;background:rgba(247,241,227,.6)}
@@ -403,7 +403,6 @@ button.hc:hover{transform:translateY(-2px);box-shadow:0 4px 10px -4px rgba(40,25
 .pk-box-t b{font-family:var(--brush);font-weight:400;font-size:18px;color:var(--ink);letter-spacing:.15em}
 .pk-box-t .kg{font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}.pk-box-t .kg.over{color:var(--cinnabar);font-weight:600}
 .pk-box-t .kg.over::after{content:' 背不动！'}
-.pk-tray-lbl{position:absolute;font-family:var(--brush);font-size:15px;color:var(--ink-3);letter-spacing:.1em}
 .pk-item{position:absolute;padding:0;border:1px solid rgba(60,50,30,.35);background:rgba(250,246,236,.95);border-radius:3px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;transition:left .22s ease,top .22s ease,box-shadow .15s;box-shadow:0 2px 6px -3px rgba(40,25,5,.35)}
 .pk-item canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .pk-item .kg{position:absolute;left:3px;top:2px;font-size:11px;line-height:1;color:var(--ink-2);background:rgba(250,246,236,.85);padding:1px 3px;border-radius:2px;pointer-events:none}
@@ -416,25 +415,34 @@ button.hc:hover{transform:translateY(-2px);box-shadow:0 4px 10px -4px rgba(40,25
 .pk-item.shake{animation:pkShake .35s}
 @keyframes pkShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 @media (max-width:560px){.pk-bar .nm{font-size:18px}.pk-bar .pk-legend{display:none}.pk-item .kg{font-size:10px}.pk-item .val{min-width:15px;height:15px;line-height:15px;font-size:12px}}
-/* 五湖：湖面、家当曲线、押注 */
-.kl{position:absolute;inset:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);grid-template-rows:minmax(0,1fr) auto;gap:10px;padding:10px}
-.kl-scene{position:relative;min-height:150px;border:1px solid rgba(60,50,30,.2);overflow:hidden}
-.kl-scene canvas,.kl-chart canvas{position:absolute;inset:0;width:100%;height:100%}
-.kl-chart{position:relative;min-height:170px;background:rgba(247,241,227,.6);border:1px solid rgba(60,50,30,.2)}
-.kl-ctl{display:flex;flex-direction:column;gap:8px;min-width:0}
-.kl-deal{background:var(--paper-hi);border:1px solid rgba(60,50,30,.25);padding:8px 12px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-.kl-deal .dn{font-family:var(--brush);font-size:24px;letter-spacing:.12em;color:var(--ink)}
-.kl-deal .dd{font-size:14px;color:var(--ink-2)}.kl-deal .dd b{font-family:var(--brush);font-weight:400;font-size:20px;color:var(--cinnabar)}
-.kl-stake{display:flex;align-items:center;gap:12px;background:var(--paper-hi);border:1px solid rgba(60,50,30,.25);padding:8px 12px}
-.kl-stake input{flex:1;accent-color:var(--cinnabar)}
-.kl-f{min-width:130px;font-family:var(--brush);font-size:22px;color:var(--cinnabar)}.kl-f small{font-family:inherit;font-size:14px;color:var(--ink-2)}.kl-f b{font-weight:400}
-.kl-chips{display:flex;gap:6px;flex-wrap:wrap}.kl-chips .btn{min-width:48px}
-.kl-board{display:flex;flex-direction:column;gap:3px;font-size:13px;min-width:0}
-.kb-row{display:grid;grid-template-columns:20px 4.5em 1fr auto;white-space:nowrap;gap:8px;align-items:baseline;padding:3px 8px;background:rgba(247,241,227,.7);border:1px solid rgba(60,50,30,.12)}
-.kb-row .rk{font-family:var(--brush);color:var(--ink-3)}.kb-row .nm{font-family:var(--brush);font-size:16px}.kb-row .rule{color:var(--ink-3);font-size:12px}.kb-row b{font-variant-numeric:tabular-nums}
-.kb-row.me{border-color:var(--cinnabar);background:rgba(179,38,30,.06)}.kb-row.me .nm{color:var(--cinnabar)}
-.kb-note{font-size:14px;color:var(--ink-2);padding:6px 4px}.kb-note b{color:var(--cinnabar)}
-.kl-goal{display:flex;flex-direction:column;gap:4px;background:var(--paper-hi);border:1px solid rgba(60,50,30,.25);padding:8px 12px;font-size:14px}
-.kl-goal b{font-family:var(--brush);font-weight:400;font-size:20px}.kl-goal span{color:var(--ink-3);font-size:12px;margin-left:6px}
-.kl-goal .ok::before{content:'✓ ';color:var(--malachite)}.kl-goal .no::before{content:'✗ ';color:var(--cinnabar)}.kl-goal .ok b{color:var(--malachite)}.kl-goal .no b{color:var(--cinnabar)}.kl-goal .mute{color:var(--ink-3);font-size:12px}
-@media (max-width:700px){.kl{grid-template-columns:minmax(0,1fr);grid-template-rows:22vh auto 200px auto;gap:8px;padding:8px;overflow-y:auto;align-content:start}.kl-scene{order:1}.kl-ctl{order:2}.kl-chart{order:3}.kl-board{order:4}.kl-f{min-width:110px;font-size:19px}.kl-deal .dn{font-size:20px}}
+.pk-side{position:absolute;display:flex;flex-direction:column;gap:8px}
+.pk-from{display:flex;align-items:center;gap:8px;min-height:50px}
+.pk-from canvas{width:40px;height:50px;flex:none}
+.pk-from small{display:block;font-size:12px;color:var(--ink-3)}
+.pk-from b{font-family:var(--brush);font-weight:400;font-size:21px;color:var(--ink);letter-spacing:.06em}
+.pk-mid{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:flex-start}
+.pk-hand{border:2px dashed rgba(120,70,40,.45);border-radius:8px;background:rgba(236,224,196,.45)}
+.pk-fuse{height:6px;margin-top:7px;background:rgba(120,70,40,.2);border-radius:3px;position:relative}
+.pk-fuse i{position:absolute;left:0;top:0;bottom:0;width:100%;background:#8a5a3a;border-radius:3px}
+.pk-fuse i::after{content:'';position:absolute;right:-4px;top:-3px;width:8px;height:12px;border-radius:50%;background:radial-gradient(#ffcf6a,#d2491f 55%,transparent 72%)}
+.pk-fuse.low i{background:var(--cinnabar)}.pk-fuse.low{animation:blink .5s infinite alternate}.pk-fuse.off{visibility:hidden}
+.pk-next small{display:block;font-size:12px;color:var(--ink-3);margin-bottom:4px}
+.pk-next .tiles{display:flex;gap:12px;align-items:flex-end}
+.pk-tile{display:flex;flex-direction:column;align-items:center;gap:3px;opacity:.82}
+.pk-tile canvas{display:block;border:1px solid rgba(60,50,30,.3);background:rgba(250,246,236,.9);border-radius:2px}
+.pk-tile span{font-size:11.5px;color:var(--ink-2);white-space:nowrap}.pk-tile em{font-style:normal;color:var(--cinnabar);font-weight:600}
+.pk-sets{display:flex;flex-direction:column;gap:5px;font-size:13px}
+.pk-sets .st{display:flex;align-items:center;gap:6px}
+.pk-sets .st b{font-family:var(--brush);font-weight:400;font-size:16px;min-width:4.4em;color:var(--ink-2)}
+.pk-sets .st i{font-style:normal;color:var(--cinnabar);font-size:12px;min-width:2.2em}
+.pk-sets span{display:inline-block;width:23px;height:23px;line-height:22px;text-align:center;border:1px solid rgba(60,50,30,.3);border-radius:50%;font-family:var(--brush);font-size:14px;color:var(--ink-3);background:rgba(250,246,236,.7)}
+.pk-sets span.got{background:var(--cinnabar);color:#fff;border-color:var(--cinnabar)}
+.pk-sets span.lost{text-decoration:line-through;opacity:.35}
+.pk-sets .st.done b{color:var(--cinnabar)}.pk-sets .st.done::after{content:'成套！';font-family:var(--brush);color:var(--cinnabar);font-size:15px}
+.pk-pile{border:2px dashed rgba(60,50,30,.3);border-radius:8px;padding:8px 10px;font-size:12.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s,border-color .15s}
+.pk-pile b{font-family:var(--brush);font-weight:400;font-size:16px;color:var(--ink-2);margin-right:8px}
+.pk-pile.hot{border-color:var(--cinnabar);background:rgba(179,38,30,.08)}
+.pk-item.hand{box-shadow:0 8px 18px -6px rgba(40,25,5,.5)}
+.pk-item.arrive{animation:pkArrive .35s ease-out}
+@keyframes pkArrive{from{transform:translateX(40px) scale(.85);opacity:0}}
+@media (max-width:560px){.pk-from b{font-size:18px}.pk-from{min-height:44px}.pk-from canvas{height:44px;width:34px}.pk-sets .st b{font-size:14px;min-width:4.2em}.pk-sets span{width:20px;height:20px;line-height:19px;font-size:12px}}

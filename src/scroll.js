@@ -75,7 +75,7 @@ const BOATS=[[6150,5000,812,14,0,150],[4380,3920,806,18,1,95],[3000,2480,842,12,
 /* 炊烟：屋舍的烟囱 */
 const SMOKES=[[5990,664],[4400,596],[4750,596],[3715,652],[3410,684],[1920,600]];
 /* 卷终题跋里每关的一句 */
-const LESSON={tea:'茶有先后',race:'驷有上下',pack:'箧有取舍',gate:'门有开合',match:'士有良配',inn:'房有留余',farm:'田有经纬',beacon:'燧有远近',horse:'马有去留',tsp:'舟有远近',kelly:'财有进退'};
+const LESSON={tea:'茶有先后',race:'驷有上下',pack:'箧有取舍',gate:'门有开合',match:'士有良配',inn:'房有留余',auction:'价有虚实',beacon:'燧有远近',horse:'马有去留',tsp:'舟有远近',beans:'豆有疏密'};
 const ease=k=>k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
 
 export function createScroll({levels,audio,onEnter}){
