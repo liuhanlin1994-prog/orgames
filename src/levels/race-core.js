@@ -42,19 +42,11 @@ export function onlineSolver(mine,opp){
 
 /* ---------- 三回合 ---------- */
 export const R1={king:[9,6,3],mine:[8,5,2],tier:['上驷','中驷','下驷']};
-/* 擂台：三位诸侯，马一位比一位多；脚力总和都比你高 */
-export const R2=[
-  {nm:'魏王',opp:[5,9,3,7],mine:[4,8,2,6],secs:40},
-  {nm:'楚王',opp:[7,4,10,5,8],mine:[3,9,6,2,9],secs:45},
-  {nm:'秦王',opp:[8,2,11,5,10,7],mine:[6,10,3,9,4,8],secs:55}
-];
+/* 擂台：一位诸侯，六匹马，脚力总和比你高 */
+export const R2=[{nm:'秦王',opp:[8,2,11,5,10,7],mine:[6,10,3,9,4,8],secs:40}];
 /* 暗盘：对手出场次序不知，只知道他有哪几匹马 */
-export const R3=[
-  {nm:'赵王',opp:[9,7,6,4,2],mine:[8,7,5,3,1]},
-  {nm:'燕王',opp:[10,8,5,4,3],mine:[9,6,6,4,2]},
-  {nm:'齐王',opp:[11,9,8,6,3],mine:[10,9,7,5,4]}
-];
-export function gradeR2(won,best){const r=won/best;return r>=1?'至妙':r>=.8?'上品':r>=.6?'中品':'下品';}
+export const R3=[{nm:'齐王',opp:[11,9,8,6,3],mine:[10,9,7,5,4]}];
+export function gradeR2(won,best){const r=won/best;return r>=1?'至妙':r>=.75?'上品':r>=.5?'中品':'下品';}
 export function gradeR3(good,total){const r=good/total;return r>=.93?'至妙':r>=.8?'上品':r>=.6?'中品':'下品';}
 /* 跑完一场要多久（秒）：快马先到；平局时齐王先到 */
 export const runTime=(v,king)=>.78+.075*(12-v)+(king?0:.02);

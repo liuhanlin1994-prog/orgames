@@ -487,3 +487,16 @@ button.hc:hover{transform:translateY(-2px);box-shadow:0 4px 10px -4px rgba(40,25
 .bn-chart{flex:1;min-height:110px;width:100%;background:rgba(247,241,227,.7);border:1px solid rgba(60,50,30,.18)}
 .bn-note{font-size:13px;color:var(--ink-2);line-height:1.6}.bn-note b{color:var(--cinnabar)}
 @media (max-width:640px){.bn-stats{padding:6px 10px;font-size:12.5px;gap:2px}.bn-stats .big b{font-size:30px}.bn-chart{min-height:90px}.bn-note{font-size:12px}}
+/* 窑火：龙窑、火候尺 */
+.kn{position:absolute;inset:0;display:flex;flex-direction:column}
+.kn-scene{position:relative;flex:1;min-height:120px;overflow:hidden}
+.kn-scene>canvas{position:absolute;inset:0;width:100%;height:100%}
+.kn-info{position:absolute;left:12px;top:10px;z-index:2;display:flex;flex-direction:column;gap:4px;background:rgba(247,241,227,.85);border:1px solid rgba(60,50,30,.2);padding:6px 12px 8px}
+.kn-kilns{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-3)}
+.kn-kilns i{display:inline-block;width:14px;height:12px;border-radius:7px 7px 2px 2px;background:#c0602c;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2)}
+.kn-kilns i.used{background:rgba(60,50,30,.18);box-shadow:none}
+.kn-w{font-size:14px;color:var(--ink-2);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.kn-w b{font-family:var(--brush);font-weight:400;font-size:28px;color:var(--cinnabar)}.kn-w small{font-size:12px;color:var(--ink-3)}
+.kn-rwrap{position:relative;flex:none;height:clamp(210px,40%,300px);border-top:1px solid rgba(60,50,30,.2);background:rgba(247,241,227,.78)}
+.kn-ruler{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+.kn-ruler:focus-visible{outline:2px solid rgba(30,91,115,.5);outline-offset:-2px}
+@media (max-width:640px){.kn-rwrap{height:clamp(220px,50%,360px)}.kn-w b{font-size:22px}.kn-info{padding:4px 8px 6px}}

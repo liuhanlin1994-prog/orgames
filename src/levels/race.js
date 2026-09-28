@@ -158,43 +158,36 @@ export const raceLevel={
 
     /* ---------- 第二回：擂台（明牌，限一炷香） ---------- */
     function round2(){S.round=2;S.idx=0;S.tally={won:0,best:0,good:0,total:0};ui.stageName('第二回 · 擂台');ui.hideResult();
-      ui.say('三位诸侯轮番上擂台，他们的次序明摆着。<b>一炷香</b>之内排好你的马，香尽了就按现在的样子开跑。');next2();}
+      ui.say(`${R2[0].nm}上擂台，${R2[0].opp.length} 匹马的次序明摆着，每一匹都比你的同等马快。<b>一炷香</b>之内排好，香尽了就按现在的样子开跑。`);next2();}
     function next2(){
-      const c=R2[S.idx];S.first=true;ui.hideResult();setup(c.opp.slice(),c.mine.slice());
-      bar.innerHTML=`<span class="nm">${c.nm}</span><span>第 ${S.idx+1} / ${R2.length} 位 · ${c.opp.length} 场</span>`;
+      const c=R2[S.idx];ui.hideResult();setup(c.opp.slice(),c.mine.slice());
+      bar.innerHTML=`<span class="nm">${c.nm}</span><span>${c.opp.length} 场 · 赢得越多越好</span>`;
       const inc=el('div','rc-incense','<span>一炷香</span><div class="stick"><div class="burn"></div></div>');bar.appendChild(inc);
-      meter2();refreshActs();S.deadline=performance.now()+(reduceMotion()?c.secs*2:c.secs)*1000;const burn=inc.querySelector('.burn'),total=c.secs*1000;
+      ui.meter('');refreshActs();S.deadline=performance.now()+(reduceMotion()?c.secs*2:c.secs)*1000;const burn=inc.querySelector('.burn'),total=c.secs*1000;
       clearInterval(S.timer);S.timer=setInterval(()=>{if(!root.isConnected){clearInterval(S.timer);return;}const left=S.deadline-performance.now(),k=Math.max(0,left/total);
         burn.style.width=(k*100)+'%';inc.classList.toggle('low',k<.25);if(left<=0){clearInterval(S.timer);go2(true);}},100);
     }
-    function meter2(){ui.meter(`<small>已胜</small><b>${S.tally.won}</b><small>场 · 最多 ${S.tally.best}</small>`);}
     function go2(timeout){
       if(S.racing)return;clearInterval(S.timer);const c=R2[S.idx];
       if(timeout){const free=S.mine.map((v,i)=>i).filter(i=>laneOf(i)<0);S.lanes.forEach((v,k)=>{if(v<0){const i=free.splice(Math.floor(Math.random()*free.length),1)[0];S.lanes[k]=i;slotEls[k].appendChild(cards[i]);markSlot(k);}});ui.say('香尽了！没排的马随便上了场。');}
       ui.acts([]);raceLanes(S.opp.map((v,k)=>k),runs=>{
-        const w=runs.filter(r=>r.win).length,best=maxWins(c.mine,c.opp);
-        if(S.first){S.tally.won+=w;S.tally.best+=best;S.first=false;}meter2();
-        const perfect=w>=best;perfect?audio.arp():audio.low();
-        ui.result(perfect?'妙':'可惜',`${c.nm}：你赢 <b>${w}</b> 场 · 最多能赢 <b>${best}</b> 场（共 ${c.opp.length} 场）`,
+        const w=runs.filter(r=>r.win).length,best=maxWins(c.mine,c.opp),g=gradeR2(w,best),perfect=w>=best;perfect?audio.arp():audio.low();
+        ui.result(perfect?'至妙':g,`${c.nm}：你赢 <b>${w}</b> 场 · 最多能赢 <b>${best}</b> 场（共 ${c.opp.length} 场）`,
           perfect?'能赢的用刚好能赢的，赢不了的派最弱的去送——一场不亏。':'有的马赢得太「奢侈」：用快马去赢慢马，便没有快马去赢该赢的那场了。',true);
-        const L=[];if(!perfect)L.push(['看孙膑怎么排',showBest]);L.push(['再排一次（不计分）',retry2]);
-        L.push(S.idx<R2.length-1?['下一位 →',()=>{S.idx++;next2();},true]:['擂台收官 →',finish2,true]);ui.acts(L);
+        const L=[];if(!perfect)L.push(['看孙膑怎么排',showBest]);L.push(['再来一次',round2],['下一回 →',round3,true]);ui.acts(L);
+        ui.say(perfect?'下一回，对手学精了：<b>不亮次序</b>，一场一场地翻牌。':'看看孙膑的排法，再来一次。');
       });
     }
     function showBest(){const lanes=bestAssign(S.mine,S.opp);lanes.forEach((i,k)=>{const g=el('div','rc-ghostv',CNUM[S.mine[i]]);slotEls[k].appendChild(g);});
       ui.say('朱字是孙膑的排法：从对手最弱的马看起，用<b>刚好能赢它</b>的那匹去赢；实在赢不了的，就派你最弱的马去送。');}
-    function retry2(){const c=R2[S.idx];const first=S.first;setup(c.opp.slice(),c.mine.slice());S.first=first;ui.hideResult();bar.querySelector('.rc-incense')&&bar.querySelector('.rc-incense').remove();refreshActs();ui.say('不计分，慢慢排。');}
-    function finish2(){ui.hideResult();const g=gradeR2(S.tally.won,S.tally.best);audio.arp();
-      ui.result(g,`三位诸侯：你赢 <b>${S.tally.won}</b> 场 · 最多能赢 <b>${S.tally.best}</b> 场`,g==='至妙'?'场场算尽。马不如人，次序可以胜人。':'规矩只有一句：能赢，用刚好能赢的；赢不了，派最弱的。',true);
-      ui.say('下一回，诸侯们学精了：<b>不亮次序</b>，一场一场地翻牌。');ui.acts([['再打擂台',round2],['下一回 →',round3,true]]);}
 
     /* ---------- 第三回：暗盘（一场一场翻开） ---------- */
     function round3(){S.round=3;S.idx=0;S.tally={won:0,best:0,good:0,total:0};ui.stageName('第三回 · 暗盘');ui.hideResult();
-      ui.say('诸侯只让你知道他有哪几匹马，出场次序不亮。每翻开一场，就从剩下的马里派一匹上场——<b>点一下马就派上去</b>。');next3();}
+      ui.say(`${R3[0].nm}只让你知道他有哪几匹马，出场次序不亮。每翻开一场，就从剩下的马里派一匹上场——<b>点一下马就派上去</b>。`);next3();}
     function next3(){
       const c=R3[S.idx],order=c.opp.map((v,k)=>k).sort(()=>Math.random()-.5);S.cur={c,opp:order.map(k=>c.opp[k]),good:0,won:0,mm:0,om:0};
       setup(S.cur.opp.slice(),c.mine.slice(),true);S.solver=onlineSolver(c.mine,S.cur.opp);S.cur.mm=S.solver.full;S.cur.om=S.solver.full;
-      bar.innerHTML=`<span class="nm">${c.nm}</span><span>的马：</span><span class="chips">${[...c.opp].sort((a,b)=>b-a).map(v=>`<span class="chip" data-v="${v}">${CNUM[v]}</span>`).join('')}</span><span class="rc-prog">第 ${S.idx+1} / ${R3.length} 位</span>`;
+      bar.innerHTML=`<span class="nm">${c.nm}</span><span>的马：</span><span class="chips">${[...c.opp].sort((a,b)=>b-a).map(v=>`<span class="chip" data-v="${v}">${CNUM[v]}</span>`).join('')}</span>`;
       ui.acts([]);meter3();setTimeout(()=>reveal(0),450);
     }
     function meter3(){ui.meter(`<small>妙手</small><b>${S.tally.good}</b><small>/ ${S.tally.total} 步</small>`);}
@@ -207,14 +200,12 @@ export const raceLevel={
       if(!good){const avail=[];for(let j=0;j<S.mine.length;j++)if((c.mm|(1<<i))>>j&1)avail.push(j);const g=sunbinPick(S.mine,avail,S.opp[k]);const sr=slotEls[k].getBoundingClientRect(),st=ui.stage.getBoundingClientRect();ui.flash('派'+CNUM[S.mine[g]]+'更好',sr.left-st.left+sr.width/2,sr.top-st.top);}
       S.active=-1;
       if(k+1<S.opp.length){setTimeout(()=>reveal(k+1),good?350:900);return;}
-      const hind=maxWins(c.c.mine,S.opp);audio.arp();
-      ui.result(c.good===S.opp.length?'妙':'复盘',`${c.c.nm}：赢 <b>${c.won}</b> 场 · 妙手 <b>${c.good}</b> / ${S.opp.length} · 若次序全亮，最多赢 ${hind} 场`,
-        c.good===S.opp.length?'步步不亏。暗牌时一场一场算，还是那句话：能赢用刚好赢的，赢不了派最弱的。':'不是妙手的那几步，要么用快马去赢了本可以用慢马赢的，要么赢不了却没派最弱的马去送。',true);
-      ui.acts(S.idx<R3.length-1?[['下一位 →',()=>{S.idx++;ui.hideResult();next3();},true]]:[['收官 →',finish3,true]]);
+      const hind=maxWins(c.c.mine,S.opp),n=S.opp.length,g=gradeR3(c.good,n);c.good===n?audio.arp():audio.bell();
+      ui.result(c.good===n?'至妙':g,`${c.c.nm}：赢 <b>${c.won}</b> 场 · 妙手 <b>${c.good}</b> / ${n} · 若次序全亮，最多赢 ${hind} 场`,
+        c.good===n?'步步不亏。暗牌时一场一场算，还是那句话：能赢用刚好赢的，赢不了派最弱的——我们用精确解逐一验过。':'不是妙手的那几步，要么用快马去赢了本可以用慢马赢的，要么赢不了却没派最弱的马去送。',true);
+      ui.say(c.good===n?'马不如人，次序可以胜人。这一处参透了。':'次序每回都重新洗过，再来一盘试试。');
+      ui.acts([['再来暗盘',round3],['题跋 · 钤印',()=>ui.colophon(),true]]);
     }
-    function finish3(){ui.hideResult();const g=gradeR3(S.tally.good,S.tally.total);audio.arp();
-      ui.result(g,`三位诸侯：妙手 <b>${S.tally.good}</b> / ${S.tally.total} 步`,'明牌能排尽，暗牌也不慌：一场一场地算「刚好能赢」和「最弱去送」，每一步都是最好的一步——我们用精确解逐一验过。',true);
-      ui.say('马不如人，次序可以胜人。这一处参透了。');ui.acts([['再来暗盘',round3],['题跋 · 钤印',()=>ui.colophon(),true]]);}
 
     this._resize=()=>{if(!S.opp.length)return;sizes();drawTrack();};
     this._stop=()=>{clearInterval(S.timer);cancelAnimationFrame(S.raf);document.querySelectorAll('.hc.ghost').forEach(g=>g.remove());};

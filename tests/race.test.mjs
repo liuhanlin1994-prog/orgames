@@ -14,10 +14,10 @@ test('第一回：同等相对三场皆负，孙膑的次序两胜一负', ()=>{
   assert.equal(sameRankWins(R1.mine,R1.king),0);assert.equal(maxWins(R1.mine,R1.king),2);
   assert.equal(countWins(R1.mine,R1.king,[2,0,1]),2);
 });
-test('第二回：三位诸侯的马都更强，同等相对只能赢零到一场，排得好能赢过半', ()=>{
+test('第二回：秦王的马更强，同等相对只能赢零到一场，排得好能赢过半', ()=>{
   for(const c of R2){const sm=c.mine.reduce((a,b)=>a+b,0),so=c.opp.reduce((a,b)=>a+b,0);assert.ok(sm<so,c.nm);
     assert.ok(sameRankWins(c.mine,c.opp)<=1,c.nm);assert.ok(maxWins(c.mine,c.opp)>c.opp.length/2,c.nm);}
-  assert.deepEqual(R2.map(c=>maxWins(c.mine,c.opp)),[3,3,4]);
+  assert.deepEqual(R2.map(c=>maxWins(c.mine,c.opp)),[4]);
 });
 test('暗盘：「能赢用刚好赢的，赢不了派最弱的」每一步都是妙手（与精确解一致）', ()=>{
   const r=RNG(9);const sets=R3.map(c=>[c.mine,c.opp]);for(let t=0;t<120;t++){const m=[],o=[];for(let i=0;i<5;i++){m.push(1+Math.floor(r()*11));o.push(1+Math.floor(r()*11));}sets.push([m,o]);}
@@ -26,14 +26,14 @@ test('暗盘：「能赢用刚好赢的，赢不了派最弱的」每一步都�
       for(let j=0;j<n;j++)if(om>>j&1){const avail=[];for(let i=0;i<n;i++)if(mm>>i&1)avail.push(i);const g=sunbinPick(m,avail,o[j]);assert.ok(S.isBest(mm,om,j,g));avail.forEach(i=>walk(mm&~(1<<i),om&~(1<<j)));}};
     walk(S.full,S.full);}
 });
-test('暗盘三位诸侯：按规矩走，期望赢过半；乱派的期望赢得少得多', ()=>{
+test('暗盘：按规矩走，期望赢过半；乱派的期望赢得少得多', ()=>{
   for(const c of R3){const S=onlineSolver(c.mine,c.opp),best=S.V(S.full,S.full);assert.ok(best>=2.5,c.nm+' '+best);
     // 乱派：每场随手派一匹
     const n=5;let rnd=0;const r=RNG(4);for(let k=0;k<4000;k++){const order=[...Array(n).keys()].sort(()=>r()-.5),mine=[...Array(n).keys()].sort(()=>r()-.5);rnd+=order.reduce((s,j,i)=>s+(c.mine[mine[i]]>c.opp[j]?1:0),0);}
     assert.ok(rnd/4000<best-.8,c.nm+' random '+rnd/4000+' vs '+best);}
 });
 test('评级与跑马时间', ()=>{
-  assert.equal(gradeR2(10,10),'至妙');assert.equal(gradeR2(8,10),'上品');assert.equal(gradeR2(3,10),'下品');
+  assert.equal(gradeR2(4,4),'至妙');assert.equal(gradeR2(3,4),'上品');assert.equal(gradeR2(2,4),'中品');assert.equal(gradeR2(1,4),'下品');
   assert.equal(gradeR3(15,15),'至妙');assert.equal(gradeR3(12,15),'上品');
   assert.ok(runTime(9,true)<runTime(8,false));assert.ok(runTime(5,true)<runTime(5,false));
 });
