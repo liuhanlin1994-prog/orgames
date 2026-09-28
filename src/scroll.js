@@ -173,7 +173,7 @@ export function createScroll({levels,audio,onEnter}){
       t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openLeaf(L);}});
       m.appendChild(t);
     });
-    $('sealCount').textContent=done.size;
+    $('sealCount').textContent=done.size;if($('sealTotal'))$('sealTotal').textContent=levels.length;
   }
 
   /* ---------- 拖动 ---------- */

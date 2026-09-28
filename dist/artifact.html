@@ -518,7 +518,7 @@ button.hc:hover{transform:translateY(-2px);box-shadow:0 4px 10px -4px rgba(40,25
   </div>
 
   <div id="hud">
-    <div class="count" title="已钤印的关卡">钤印 <b id="sealCount">0</b> / 11</div>
+    <div class="count" title="已钤印的关卡">钤印 <b id="sealCount">0</b> / <span id="sealTotal">12</span></div>
     <button class="btn red" id="nextBtn">下一处 ←</button>
     <button class="btn" id="previewBtn" aria-pressed="false">终卷预览</button>
     <button class="btn" id="prologueBtn">序章</button>
@@ -1744,7 +1744,7 @@ function createScroll({levels,audio,onEnter}){
       t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openLeaf(L);}});
       m.appendChild(t);
     });
-    $('sealCount').textContent=done.size;
+    $('sealCount').textContent=done.size;if($('sealTotal'))$('sealTotal').textContent=levels.length;
   }
 
   
