@@ -82,6 +82,10 @@ function peakPts(n,p,base){
   pts.step=step;
   return pts;
 }
+/* 山形轮廓（与 drawPeak 同一套随机数），供序章把算筹对齐到山脊 */
+export function peakSilhouette(p,base){const r=RNG(p.seed),n=Noise1(r);return peakPts(n,p,base);}
+export function massifTopAt(cfg,x){let y=cfg.base;for(const p of cfg.peaks){const pts=p._sil||(p._sil=peakSilhouette(p,cfg.base));if(x<pts[0][0]||x>pts[pts.length-1][0])continue;
+  const i=Math.min(pts.length-2,Math.max(0,Math.floor((x-pts[0][0])/pts.step))),q0=pts[i],q1=pts[i+1],t=(x-q0[0])/((q1[0]-q0[0])||1);y=Math.min(y,q0[1]+(q1[1]-q0[1])*t);}return y;}
 export function drawPeak(ctx,p,cfg,colored){
   const r=RNG(p.seed),n=Noise1(r);
   const base=cfg.base,a=cfg.a,ink=cfg.ink||INK;
@@ -217,6 +221,19 @@ export function person(ctx,x,y,s,pack){
   ctx.beginPath();ctx.moveTo(x-s*.15,y-s*.75);ctx.lineTo(x+s*.15,y-s*.75);ctx.lineTo(x+s*.22,y);ctx.lineTo(x-s*.22,y);ctx.fill();
   if(pack){ctx.fillStyle=`rgba(${PAPER},.95)`;ctx.strokeStyle=`rgba(${INK},.8)`;ctx.lineWidth=.8;ctx.fillRect(x-s*.5,y-s*.8,s*.3,s*.4);ctx.strokeRect(x-s*.5,y-s*.8,s*.3,s*.4);}
 }
+/* 穿袍的人（s ≈ 身高，y 为落脚处）：tint 袍色，hat 0 发髻 / 1 斗笠 / 2 幞头，belt 腰带色 */
+export function figure(c,x,y,s,tint,hat,belt){
+  const lw=Math.max(.8,s*.045);c.lineCap='round';c.lineJoin='round';c.strokeStyle=`rgba(${INK},.85)`;c.lineWidth=Math.max(1,s*.055);
+  c.beginPath();c.moveTo(x-s*.05,y-s*.27);c.lineTo(x-s*.1,y);c.moveTo(x+s*.05,y-s*.27);c.lineTo(x+s*.09,y);c.stroke();
+  c.beginPath();c.moveTo(x-s*.11,y-s*.74);c.quadraticCurveTo(x-s*.19,y-s*.46,x-s*.2,y-s*.23);c.quadraticCurveTo(x,y-s*.19,x+s*.2,y-s*.23);c.quadraticCurveTo(x+s*.19,y-s*.46,x+s*.11,y-s*.74);c.closePath();
+  c.fillStyle=`rgba(${PAPER},.97)`;c.fill();c.fillStyle=tint;c.fill();c.lineWidth=lw;c.stroke();
+  if(belt){c.strokeStyle=belt;c.lineWidth=Math.max(1.2,s*.05);}c.beginPath();c.moveTo(x-s*.15,y-s*.5);c.lineTo(x+s*.15,y-s*.5);c.stroke();c.strokeStyle=`rgba(${INK},.85)`;c.lineWidth=lw;
+  c.beginPath();c.moveTo(x+s*.09,y-s*.69);c.quadraticCurveTo(x+s*.19,y-s*.55,x+s*.13,y-s*.44);c.stroke();
+  c.fillStyle=`rgba(${INK},.9)`;c.beginPath();c.arc(x,y-s*.83,s*.085,0,7);c.fill();
+  if(hat===1){c.fillStyle=`rgba(${INK},.78)`;c.beginPath();c.moveTo(x-s*.23,y-s*.84);c.quadraticCurveTo(x,y-s*1.07,x+s*.23,y-s*.84);c.closePath();c.fill();}
+  else if(hat===2){c.fillStyle=`rgba(${INK},.9)`;c.fillRect(x-s*.08,y-s*.96,s*.16,s*.07);c.strokeStyle=`rgba(${INK},.9)`;c.lineWidth=lw;c.beginPath();c.moveTo(x-s*.08,y-s*.93);c.lineTo(x-s*.2,y-s*.9);c.moveTo(x+s*.08,y-s*.93);c.lineTo(x+s*.2,y-s*.9);c.stroke();}
+  else{c.beginPath();c.arc(x,y-s*.94,s*.04,0,7);c.fill();}
+}
 export function tent(ctx,x,y,s){
   ctx.fillStyle=`rgba(${PAPER},.97)`;ctx.strokeStyle=`rgba(${INK},.85)`;ctx.lineWidth=1.2;
   ctx.beginPath();ctx.moveTo(x-s,y);ctx.lineTo(x-s*.8,y-s*.6);ctx.quadraticCurveTo(x,y-s*1.25,x+s*.8,y-s*.6);ctx.lineTo(x+s,y);ctx.closePath();ctx.fill();ctx.stroke();
@@ -297,16 +314,26 @@ export function steam(ctx,x,y,s,t){
 }
 
 /* ---------- 马（马市，写意） ---------- */
-/* 朝左站立，(x,y) 是四蹄落地处的中心，s 为身长。o: {coat 0–1 墨色深浅, spots, phase 0/1, seed, head 抬头程度} */
+/* 跑马四帧：[远前, 远后, 近前, 近后]，每条腿 [大腿根, 膝/飞节, 球节, 蹄] */
+const GALLOP=[
+  [[[34,40],[25,54],[16,63],[11,67]],[[75,40],[85,55],[93,64],[98,67]],[[29,41],[19,53],[10,61],[5,64]],[[70,40],[80,54],[89,62],[94,65]]],
+  [[[34,40],[29,58],[25,73],[22,80]],[[75,40],[83,57],[88,70],[91,76]],[[29,41],[23,56],[16,67],[12,73]],[[70,40],[77,58],[81,71],[83,77]]],
+  [[[34,40],[39,58],[43,70],[45,78]],[[75,40],[67,56],[59,67],[55,73]],[[29,41],[33,58],[36,72],[35,80]],[[70,40],[63,58],[57,70],[53,77]]],
+  [[[34,40],[41,52],[47,58],[49,61]],[[75,40],[72,60],[70,74],[68,80]],[[29,41],[37,51],[42,56],[40,59]],[[70,40],[74,60],[76,74],[76,80]]]
+];
+const GALLOP_BOB=[-4,0,1,-1];
+/* 朝左，(x,y) 是四蹄落地处的中心，s 为身长。
+   o: {coat 0–1 墨色深浅, spots, phase 0/1 走步, gallop 0–3 跑步帧, seed, head 抬头程度（负数低头）, rider 骑手衣色 'r,g,b'} */
 export function inkHorse(ctx,x,y,s,o){
-  o=o||{};const r=RNG(o.seed||7),n=Noise1(r),coat=o.coat==null?.7:o.coat,k=s/100;
+  o=o||{};const r=RNG(o.seed||7),n=Noise1(r),coat=o.coat==null?.7:o.coat,k=s/100,gal=o.gallop!=null?o.gallop%4:-1;
+  const gy=y;if(gal>=0)y+=GALLOP_BOB[gal]*k;
   const P=(u,v)=>[x+(u-50)*k,y+(v-80)*k];
-  const hu=o.head||0;           // 抬头：头颈上移
+  const hu=o.head!=null?o.head:gal>=0?-.8:0;           // 抬头：头颈上移；跑起来低头前冲
   const Hd=(u,v)=>P(u,v-hu*4*(1-(u-10)/30));
   // 影
-  ctx.fillStyle=`rgba(${INK},.08)`;ctx.beginPath();ctx.ellipse(x,y+1,s*.4,s*.035,0,0,7);ctx.fill();
+  ctx.fillStyle=`rgba(${INK},.08)`;ctx.beginPath();ctx.ellipse(x,gy+1,s*.4,s*.035,0,0,7);ctx.fill();
   // 腿：[大腿根, 膝/飞节, 球节, 蹄]；先远侧（淡），后近侧。大腿并进身体剪影，小腿单独落笔
-  const legs=o.phase?
+  const legs=gal>=0?GALLOP[gal]:o.phase?
     [[[34,40],[38,61],[37,76],[35,80]],[[75,40],[72,61],[76,76],[75,80]],[[29,41],[24,61],[23,76],[21,80]],[[70,40],[76,62],[73,76],[72,80]]]:
     [[[34,40],[32,61],[33,76],[31,80]],[[75,40],[79,61],[78,76],[77,80]],[[29,41],[31,61],[32,76],[31,80]],[[70,40],[70,61],[71,76],[69,80]]];
   const thigh=(L,far,front)=>{const a=P(...L[0]),b=P(...L[1]);const w0=(front?9:12)*k,w1=(front?4.2:4.6)*k;const dx=b[0]-a[0],dy=b[1]-a[1],m=Math.hypot(dx,dy)||1,nx=-dy/m,ny=dx/m;
@@ -350,11 +377,30 @@ export function inkHorse(ctx,x,y,s,o){
   for(let i=0;i<9;i++){const t=i/8,u=20+t*17,v=8+t*19,st=Hd(u,v);
     const len=(5+r()*5)*k,ang=-.4+t*.3+(r()-.5)*.3,pts=[st];for(let j=1;j<6;j++)pts.push([st[0]+Math.cos(ang)*len*j/5+len*.25*(j/5)*(j/5),st[1]-Math.sin(ang)*len*j/5*.6+len*.12*j/5]);
     brush(ctx,pts,{noise:n,w:1.8*k,a:.7+coat*.25,dry:.3,bristles:3,off:40+i*7,taper:.4});}
-  // 尾：自臀后甩出，弧形散开的干笔
+  // 尾：站着时自臀后甩下，跑起来向后飘
   const tb=P(84,31),sw=o.phase?1:-1;
   for(let i=0;i<7;i++){const sp=(i-3)*1.3,len=.8+r()*.35,pts=[];
-    for(let j=0;j<=12;j++){const t=j/12*len;pts.push([tb[0]+(6*Math.sin(t*2.2)+t*4+sp*t*1.2+sw*t*t*3)*k,tb[1]+(t*31+sp*t*.3)*k]);}
+    for(let j=0;j<=12;j++){const t=j/12*len;
+      if(gal>=0)pts.push([tb[0]+(t*24+Math.sin(t*3+gal+i)*1.5)*k,tb[1]+(t*9+sp*t*.9+Math.sin(t*4+gal*1.7)*2)*k]);
+      else pts.push([tb[0]+(6*Math.sin(t*2.2)+t*4+sp*t*1.2+sw*t*t*3)*k,tb[1]+(t*31+sp*t*.3)*k]);}
     brush(ctx,pts,{noise:n,w:(2.8-Math.abs(i-3)*.35)*k,a:.62+coat*.28,dry:.3+Math.abs(i-3)*.05,bristles:3,off:80+i*11,taper:.3});}
+  if(o.rider)rider(ctx,P,Hd,k,n,o.rider);
+}
+/* 骑手：前倾伏身，衣色区分两家 */
+function rider(ctx,P,Hd,k,n,col){
+  const pl=q=>{const pts=[];for(let i=0;i<q.length-1;i++){const a=P(...q[i]),b=P(...q[i+1]);for(let t=0;t<1;t+=.25)pts.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);}pts.push(P(...q[q.length-1]));return pts;};
+  brush(ctx,pl([[49,29],[44,40],[47,46]]),{noise:n,w:3.4*k,a:.85,dry:.15,off:5,taper:.2});
+  const robe=new Path2D(),pp=[[49,31],[55,26],[48,13],[43,12.5],[39,18],[42,27]].map(q=>P(...q));robe.moveTo(...pp[0]);pp.slice(1).forEach(q=>robe.lineTo(...q));robe.closePath();
+  const tail=new Path2D(),tp=[[49,30],[61,26],[57,33]].map(q=>P(...q));tail.moveTo(...tp[0]);tail.lineTo(...tp[1]);tail.lineTo(...tp[2]);tail.closePath();
+  ctx.fillStyle=`rgba(${PAPER},.97)`;ctx.fill(robe);ctx.fillStyle=`rgba(${col},.5)`;ctx.fill(robe);ctx.fillStyle=`rgba(${col},.42)`;ctx.fill(tail);
+  brush(ctx,pl([[42,27],[39,18],[43,12.5]]),{noise:n,w:1.6*k,a:.8,dry:.2,off:7,wet:false,bristles:2});
+  brush(ctx,pl([[48,13],[55,26],[49,31]]),{noise:n,w:1.5*k,a:.7,dry:.3,off:9,wet:false,bristles:2});
+  const sa=[P(41.5,21),P(51,22.5)];ctx.strokeStyle=`rgba(${col},.95)`;ctx.lineWidth=2.2*k;ctx.beginPath();ctx.moveTo(...sa[0]);ctx.lineTo(...sa[1]);ctx.stroke();
+  const h=P(40.5,8);ctx.fillStyle=`rgba(${PAPER},.97)`;ctx.beginPath();ctx.arc(h[0],h[1],3.3*k,0,7);ctx.fill();ctx.strokeStyle=`rgba(${INK},.8)`;ctx.lineWidth=1*k;ctx.stroke();
+  ctx.fillStyle=`rgba(${INK},.9)`;ctx.beginPath();ctx.arc(h[0],h[1]-.6*k,3.5*k,Math.PI*1.05,Math.PI*1.95);ctx.fill();
+  ctx.beginPath();ctx.moveTo(h[0]+2.6*k,h[1]-2.2*k);ctx.lineTo(h[0]+6.5*k,h[1]-3.4*k);ctx.lineWidth=1.2*k;ctx.strokeStyle=`rgba(${INK},.85)`;ctx.stroke();
+  brush(ctx,pl([[45,15],[38,20],[32,21]]),{noise:n,w:2.4*k,a:.85,dry:.15,off:11,taper:.25});
+  const hand=P(32,21),mouth=Hd(6,20);ctx.strokeStyle=`rgba(${INK},.55)`;ctx.lineWidth=.8*k;ctx.beginPath();ctx.moveTo(...hand);ctx.quadraticCurveTo((hand[0]+mouth[0])/2,(hand[1]+mouth[1])/2+3*k,...mouth);ctx.stroke();
 }
 
 /* ---------- 印 ---------- */

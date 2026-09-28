@@ -216,4 +216,137 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--cinnabar);
 @media (max-width:700px){.hm-lab{grid-template-columns:1fr;grid-template-rows:auto minmax(170px,1fr)}.hm-grid{min-height:70px}}
 @media (max-width:560px){#colo .v{height:64vh;gap:12px}#colo .v p{font-size:16px}#colo .v p.s{font-size:13px}#colo .v .h{font-size:32px}#colo .page{padding:20px 14px}.tea-gantt{height:130px}.tcard{padding:4px 8px 4px 4px;min-height:46px}.tcard canvas{width:32px;height:32px}.tcard .tx b{font-size:17px}}
 
+
+/* ---------- 赛马 ---------- */
+.race{position:absolute;inset:0;display:flex;flex-direction:column}
+.race-track{position:relative;flex:1;min-height:150px}
+.race-track canvas{position:absolute;inset:0;width:100%;height:100%}
+.race-ledger{position:absolute;right:10px;top:8px;max-width:min(62%,420px);background:rgba(247,241,227,.9);border:1px solid rgba(60,50,30,.25);padding:6px 8px;z-index:3}
+.race-ledger .rl-t{font-family:var(--brush);font-size:15px;letter-spacing:.2em;color:var(--ink-2);margin-bottom:4px}
+.rl-list{writing-mode:vertical-rl;display:flex;flex-direction:column;flex-wrap:wrap;gap:3px 5px;max-width:100%}
+.rl-e{font-family:var(--brush);font-size:13px;line-height:1.05;color:var(--ink-3);letter-spacing:0}
+.rl-e.new{color:var(--ink)}
+.rl-e.hit{color:var(--cinnabar)}
+.race-board{flex:0 0 auto;display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));gap:6px 8px;padding:8px 10px 10px;align-items:center;border-top:1px solid rgba(60,50,30,.2);background:rgba(247,241,227,.5)}
+.rb-head{text-align:center;font-family:var(--brush);font-size:16px;letter-spacing:.2em;color:var(--ink-2)}
+.rb-lab{font-family:var(--brush);font-size:18px;letter-spacing:.2em;writing-mode:vertical-rl}
+.rb-lab.king{color:var(--cinnabar)}.rb-lab.tian{color:var(--azurite)}
+.rcard{display:flex;align-items:center;justify-content:center;gap:6px;min-height:52px;border:1px solid rgba(40,35,25,.35);background:var(--paper-hi);border-radius:2px;padding:4px 6px;transition:transform .2s,box-shadow .2s}
+.rcard canvas{width:48px;height:36px}
+.rcard b{font-family:var(--brush);font-weight:400;font-size:20px}
+.rcard.king{border-color:rgba(179,38,30,.35)}
+.rcard.hidden{background:repeating-linear-gradient(45deg,rgba(179,38,30,.06) 0 6px,transparent 6px 12px),var(--paper-hi)}
+.rcard .q{font-family:var(--brush);font-size:24px;color:var(--cinnabar)}
+button.rcard{cursor:pointer}
+button.rcard:hover{transform:translateY(-2px)}
+.rcard.sel{border-color:var(--azurite);box-shadow:0 0 0 2px rgba(30,91,115,.45);transform:translateY(-3px)}
+@media (max-width:560px){.rcard canvas{width:34px;height:26px}.rcard b{font-size:16px}.rcard{min-height:44px;gap:2px}.race-ledger{max-width:70%}}
+
+/* ---------- 城门 ---------- */
+.gate{position:absolute;inset:0}
+.gate canvas.gate-bg,.gate canvas.gate-fg{position:absolute;inset:0;width:100%;height:100%}
+.gate-hud{position:absolute;left:10px;top:8px;background:rgba(247,241,227,.9);border:1px solid rgba(60,50,30,.25);padding:6px 10px;font-size:13px;line-height:1.6;color:var(--ink-2);font-variant-numeric:tabular-nums;z-index:3}
+.gate-hud b{font-family:var(--brush);font-weight:400;font-size:19px;color:var(--ink)}
+.gate-hud .gh-clock{font-family:var(--brush);font-size:22px;color:var(--cinnabar);letter-spacing:.2em}
+.gate-spark{display:block;width:120px;height:36px;margin-top:2px}
+.gate-ctl{position:absolute;right:10px;top:8px;display:flex;align-items:center;gap:6px;background:rgba(247,241,227,.9);border:1px solid rgba(60,50,30,.25);padding:6px 8px;z-index:3}
+.gate-ctl:empty{display:none}
+.gate-ctl span{font-family:var(--brush);font-size:17px;letter-spacing:.2em}
+.gate-ctl b{font-family:var(--brush);font-weight:400;font-size:26px;min-width:1.2em;text-align:center}
+.gate-ctl .btn{min-width:38px;font-size:18px;padding:2px 8px}
+.gate-tabs{position:absolute;right:10px;top:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;z-index:3;max-width:60%}
+.gate-tabs .btn.on{background:var(--ink);color:var(--paper-hi)}
+.gate-table{position:absolute;left:10px;right:10px;bottom:8px;overflow-x:auto;z-index:3}
+.gate-table:empty{display:none}
+.gate-table table{border-collapse:collapse;background:rgba(247,241,227,.93);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap;margin:0 auto}
+.gate-table th,.gate-table td{border:1px solid rgba(60,50,30,.2);padding:4px 8px;text-align:center}
+.gate-table thead th{font-weight:400;color:var(--ink-2)}
+.gate-table tbody th{font-family:var(--brush);font-weight:400;font-size:16px}
+.gate-table tr.cur{background:rgba(179,38,30,.08)}
+.gate-chart{min-height:220px}
+@media (max-width:560px){.gate-hud{font-size:12px;padding:4px 8px}.gate-hud b{font-size:16px}.gate-tabs{top:auto;bottom:auto;left:10px;right:10px;max-width:none;justify-content:flex-start;top:calc(8px + 118px)}}
+
+/* ---------- 客栈 ---------- */
+.inn{position:absolute;inset:0}
+.inn canvas.inn-bg,.inn canvas.inn-fg{position:absolute;inset:0;width:100%;height:100%}
+.inn-book{font-size:13px;color:var(--ink-2);background:var(--paper-hi);border:1px solid rgba(60,50,30,.2);padding:8px 10px}
+.inn-book canvas{display:block;width:100%;max-width:220px;height:64px;margin-top:4px}
+.inn-scenes{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:14px;overflow:auto;align-content:center}
+.inn-sc{background:var(--paper-hi);border:1px solid rgba(60,50,30,.25);padding:12px;display:flex;flex-direction:column;gap:8px}
+.inn-sc .n{font-family:var(--brush);font-size:24px;letter-spacing:.15em}
+.inn-sc .h{font-size:13px;color:var(--ink-2)}
+.inn-sc canvas{width:100%;max-width:200px;height:58px}
+.inn-pick{display:flex;gap:4px;flex-wrap:wrap}
+.inn-pick .btn{padding:4px 8px;min-height:30px}
+.inn-pick .btn.on{background:var(--ink);color:var(--paper-hi)}
+.inn-sc .ans{font-size:13px;line-height:1.6;min-height:1.6em;color:var(--ink-2)}
+.inn-sc .ans b{color:var(--cinnabar);font-weight:600}.inn-sc .ans b.ok{color:var(--malachite)}
+@media (max-width:700px){.inn-scenes{grid-template-columns:1fr;align-content:start}}
+
+/* ---------- 长卷上的活物 ---------- */
+.lboat{position:absolute;animation:sail var(--dur) linear infinite}
+.lboat canvas{display:block}
+@keyframes sail{0%{transform:translateX(0);opacity:0}6%{opacity:1}94%{opacity:1}100%{transform:translateX(var(--dx));opacity:0}}
+.smoke{position:absolute;width:calc(26px*var(--s));height:calc(26px*var(--s));border-radius:50%;background:radial-gradient(closest-side,rgba(80,80,80,.26),rgba(80,80,80,0));animation:smoke 7.2s linear infinite}
+@keyframes smoke{0%{transform:translate(0,0) scale(.45);opacity:0}15%{opacity:.85}100%{transform:translate(calc(-34px*var(--s)),calc(-130px*var(--s))) scale(2.3);opacity:0}}
+.fall{position:absolute;border-radius:3px;opacity:.6;mix-blend-mode:screen;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,0) 0,rgba(255,255,255,.75) calc(5px*var(--s)),rgba(255,255,255,0) calc(12px*var(--s)));background-size:100% calc(24px*var(--s));animation:fall .9s linear infinite}
+@keyframes fall{to{background-position:0 calc(24px*var(--s))}}
+
+/* ---------- 入画：云气合拢 ---------- */
+#veil{position:absolute;inset:0;z-index:58;pointer-events:none;
+  background:radial-gradient(circle at var(--vx,50%) var(--vy,50%),rgba(242,233,214,1) 0,rgba(242,233,214,1) var(--vr,0px),rgba(242,233,214,0) calc(var(--vr,0px) + 32vmax))}
+
+/* ---------- 关卡开场题签 ---------- */
+#lvIntro{position:absolute;inset:0;z-index:12;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  background:radial-gradient(ellipse at 50% 45%,rgba(248,243,230,.98),rgba(232,222,198,.98));transition:opacity .6s}
+#lvIntro.out{opacity:0}
+#lvIntro .li-in{writing-mode:vertical-rl;display:flex;flex-direction:column;align-items:flex-start;gap:clamp(14px,3vw,28px);max-height:80vh}
+#lvIntro .li-nm{font-family:var(--brush);font-size:clamp(56px,11vh,108px);line-height:1;letter-spacing:.12em;color:var(--ink)}
+#lvIntro .li-cp{font-family:var(--brush);font-size:clamp(17px,2.6vh,22px);color:var(--cinnabar);letter-spacing:.4em;border-right:1px solid var(--cinnabar);padding-right:6px;margin-top:10px}
+#lvIntro .li-poem{display:flex;flex-direction:column;gap:12px;margin-top:clamp(30px,8vh,90px)}
+#lvIntro .li-line{font-family:var(--brush);font-size:clamp(20px,3.2vh,28px);letter-spacing:.25em;color:var(--ink-2)}
+#lvIntro .li-src{font-family:var(--brush);font-size:clamp(14px,2vh,17px);color:var(--ink-3);letter-spacing:.2em;margin-top:clamp(60px,14vh,160px)}
+#lvIntro .li-tap{position:absolute;bottom:18px;left:0;right:0;text-align:center;font-size:12px;letter-spacing:.3em;color:var(--ink-3)}
+#lvIntro.in .li-in>*{animation:liIn 1s cubic-bezier(.2,.7,.2,1) both}
+#lvIntro.in .li-cp{animation-delay:.25s}#lvIntro.in .li-poem{animation-delay:.55s}#lvIntro.in .li-src{animation-delay:.9s}
+@keyframes liIn{from{opacity:0;transform:translateY(-14px);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
+
+/* ---------- 逐字书写 ---------- */
+.wc{display:inline-block;opacity:0;animation:write .55s ease forwards}
+@keyframes write{from{opacity:0;filter:blur(3px);transform:scale(1.25)}to{opacity:1;filter:none;transform:none}}
+#colo.written .wc{animation:none;opacity:1}
+
+/* ---------- 序章 ---------- */
+#intro{position:absolute;inset:0;z-index:48;background:#0c0905;transition:opacity .7s}
+#intro.out{opacity:0}
+#intro canvas{position:absolute;inset:0;width:100%;height:100%}
+.itxt{position:absolute;right:max(16px,7vw);top:12vh;height:66vh;writing-mode:vertical-rl;display:flex;flex-direction:column;gap:18px;align-items:flex-start;color:var(--ink);transition:opacity .6s,color 1.2s}
+.itxt.light{color:#efe2c4;text-shadow:0 0 12px rgba(0,0,0,.6)}
+.itxt.fade{opacity:0}
+.itxt .icol{font-family:var(--brush);font-size:clamp(19px,3.3vh,28px);line-height:1.7;letter-spacing:.2em;max-height:66vh}
+.itxt .isrc{font-family:var(--brush);font-size:clamp(14px,2.1vh,17px);letter-spacing:.2em;opacity:0;animation:liIn 1s ease forwards;align-self:flex-end;color:inherit;filter:none}
+#introTitle{position:absolute;left:50%;top:10vh;transform:translateX(-50%);writing-mode:vertical-rl;display:flex;flex-direction:column;align-items:flex-start;gap:clamp(16px,3vw,30px);pointer-events:none}
+#introTitle .it1{font-family:var(--brush);font-size:clamp(64px,13vh,132px);line-height:1;letter-spacing:.06em;color:var(--ink)}
+#introTitle .it2{font-family:var(--brush);font-size:clamp(28px,5vh,50px);letter-spacing:.2em;color:var(--ink);margin-top:clamp(80px,22vh,260px)}
+#introTitle .iseal{width:clamp(48px,8vh,74px);height:clamp(48px,8vh,74px);align-self:flex-end;opacity:0;transform:scale(2.4) rotate(-14deg)}
+#introTitle.sealed .iseal{opacity:1;transform:scale(1) rotate(-5deg);transition:transform .38s cubic-bezier(.3,1.6,.5,1),opacity .12s}
+#introSkip{position:absolute;right:16px;top:calc(12px + env(safe-area-inset-top,0px));z-index:3;background:rgba(247,241,227,.14);color:#efe2c4;border-color:rgba(239,226,196,.4)}
+#introSkip:hover{background:rgba(247,241,227,.28)}
+
+/* ---------- 卷终 ---------- */
+#app.cine #hud,#app.cine #hint{opacity:0;pointer-events:none;transition:opacity .8s}
+#app.cine #scroll{pointer-events:none}
+.cine-skip{position:absolute;right:16px;top:calc(12px + env(safe-area-inset-top,0px));z-index:47;background:rgba(247,241,227,.7);animation:liIn 1s 2s both}
+#finale{position:absolute;inset:0;z-index:46;display:flex;align-items:center;justify-content:flex-start;padding:0 max(16px,6vw);pointer-events:none}
+#finale .fin-in{pointer-events:auto;background:rgba(247,241,227,.88);border:1px solid rgba(60,50,30,.2);padding:26px 22px;box-shadow:0 20px 50px -24px rgba(40,25,5,.45);display:flex;flex-direction:column;align-items:center;gap:18px;max-width:100%}
+#finaleText{writing-mode:vertical-rl;display:flex;flex-direction:column;flex-wrap:wrap;gap:16px;height:min(420px,60vh);align-items:flex-start;max-width:calc(100vw - 80px);overflow:hidden}
+#finaleText p{margin:0;font-family:var(--brush);font-size:clamp(18px,3vh,24px);letter-spacing:.2em;line-height:1.6}
+#finaleText p.fh{font-size:clamp(26px,4.4vh,38px);letter-spacing:.14em}
+#finaleText p.fs{font-size:clamp(13px,2vh,16px);color:var(--ink-2);align-self:flex-end}
+#finaleText .fseal{width:76px;height:76px;align-self:flex-end;opacity:0;transform:scale(2.6) rotate(-14deg)}
+#finale.sealed .fseal{opacity:1;transform:scale(1) rotate(-5deg);transition:transform .4s cubic-bezier(.3,1.6,.5,1),opacity .12s}
+#finaleActs{display:flex;gap:10px}
+#finaleActs[hidden]{display:none!important}
+
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

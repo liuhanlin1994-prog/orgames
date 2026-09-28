@@ -1,7 +1,7 @@
 /* 长卷：构图、分块渲染、拖动、题签、册页、上色、钤印、云气与飞鸟 */
 import {RNG} from './core/rng.js';
 import {INK,PAPER,paperBase,paperGrain,drawPeak,tree,willow,house,pavilion,banner,wall,gate,bridge,pagoda,boat,horseGlyph,person,tent,fields,waterfall,waves,mistBand,sealCanvas} from './core/ink.js';
-import {$,el,reduceMotion} from './core/ui.js';
+import {$,el,reduceMotion,writeChars} from './core/ui.js';
 
 const H=900,TOTAL=7000,TILE=1000,REACH=1150;
 
@@ -70,11 +70,19 @@ function buildScene(){
 /* 游动的云气：[x, y, 宽, 高, 周期秒, 漂移] */
 const MISTS=[[6500,560,900,120,110,160],[5600,520,1100,110,95,200],[4700,610,900,90,120,150],[3900,500,1000,120,100,180],[3100,560,1300,150,130,220],[2300,620,900,100,105,160],[1500,560,1100,120,115,200],[600,590,900,110,100,160]];
 
+/* 行船：[起点, 终点, 水面高度, 大小, 是否挂帆, 周期秒] */
+const BOATS=[[6150,5000,812,14,0,150],[4380,3920,806,18,1,95],[3000,2480,842,12,0,120],[1650,250,772,24,1,190],[1400,150,858,18,1,230]];
+/* 炊烟：屋舍的烟囱 */
+const SMOKES=[[5990,664],[4400,596],[4750,596],[3715,652],[3410,684],[1920,600]];
+/* 卷终题跋里每关的一句 */
+const LESSON={tea:'茶有先后',race:'驷有上下',pack:'箧有取舍',gate:'门有疏密',canal:'仓有盈虚',inn:'座有留余',farm:'田有经纬',weir:'水有往还',horse:'马有去留',tsp:'舟有远近',kelly:'财有进退'};
+const ease=k=>k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+
 export function createScroll({levels,audio,onEnter}){
   let S=1,DPR=1,offset=0,tiles=[],preview=false;
   const done=new Set();try{JSON.parse(localStorage.getItem('qianli_done')||'[]').forEach(id=>done.add(id));}catch(e){}
   const persist=()=>{try{localStorage.setItem('qianli_done',JSON.stringify([...done]));}catch(e){}};
-  const reveal={};
+  const reveal={};let finaleCut=null,zoom={z:1,px:0,py:0};
 
   function computeScale(){
     const vw=innerWidth,vh=innerHeight;
@@ -112,6 +120,8 @@ export function createScroll({levels,audio,onEnter}){
     };setTimeout(step,0);}
   function applyMasks(){
     for(const t of tiles){
+      if(finaleCut!=null){if(!t.colDone){t.cc.style.opacity=0;continue;}const a=(finaleCut-t.x0)*S;
+        t.cc.style.webkitMaskImage=t.cc.style.maskImage=`linear-gradient(to right, transparent ${a-260*S}px, #000 ${a+40*S}px)`;t.cc.style.opacity=1;continue;}
       if(preview){t.cc.style.webkitMaskImage=t.cc.style.maskImage='none';t.cc.style.opacity=t.colDone?1:0;continue;}
       const layers=[];
       for(const L of levels){const rr=reveal[L.id];if(!rr)continue;if(L.x+rr+200<t.x0||L.x-rr-200>t.x1)continue;
@@ -131,7 +141,12 @@ export function createScroll({levels,audio,onEnter}){
       p.setAttribute('d',`M${x-6*s},${y} q${3*s},${-4*s} ${6*s},0 q${3*s},${-4*s} ${6*s},0`);p.setAttribute('fill','none');p.setAttribute('stroke','#1b1b1d');p.setAttribute('stroke-width','1.3');p.setAttribute('stroke-linecap','round');
       p.style.transformBox='fill-box';p.style.transformOrigin='center';p.animate([{transform:'scaleY(1)'},{transform:'scaleY(.35)'},{transform:'scaleY(1)'}],{duration:520+i*40,iterations:Infinity});svg.appendChild(p);});
     life.appendChild(svg);
-    const fly=()=>{if(!document.body.contains(svg))return;const vis=visibleRange(),x=vis[0]+(vis[1]-vis[0])*(.55+Math.random()*.4),y=120+Math.random()*160;
+    BOATS.forEach(([x0,x1,y,sz,sail,dur],i)=>{const w=el('div','lboat'),c=el('canvas');c.width=c.height=Math.ceil(sz*4.4*S*2);const cx=c.getContext('2d');cx.scale(2*S,2*S);boat(cx,sz*2.2,sz*2.6,sz,!!sail);
+      c.style.cssText=`width:${sz*4.4*S}px;height:${sz*4.4*S}px;transform:scaleX(${x1<x0?-1:1})`;w.appendChild(c);
+      w.style.cssText=`left:${(x0-sz*2.2)*S}px;top:${(y-sz*2.6)*S}px;--dx:${(x1-x0)*S}px;--dur:${dur}s;animation-delay:${-dur*(.2+i*.17)}s`;life.appendChild(w);});
+    SMOKES.forEach(([x,y],i)=>{for(let k=0;k<3;k++){const m=el('div','smoke');m.style.cssText=`left:${(x-13)*S}px;top:${(y-13)*S}px;animation-delay:${-(k*2.4+i*.9)}s`;life.appendChild(m);}});
+    const fall=el('div','fall');fall.style.cssText=`left:${3040*S}px;top:${442*S}px;width:${16*S}px;height:${186*S}px`;life.appendChild(fall);
+    const fly=()=>{if(!document.body.contains(svg))return;if($('level').hidden)audio.chirp();const vis=visibleRange(),x=vis[0]+(vis[1]-vis[0])*(.55+Math.random()*.4),y=120+Math.random()*160;
       svg.style.left=x*S+'px';svg.style.top=y*S+'px';
       svg.animate([{transform:'translate(0,0)',opacity:0},{opacity:.8,offset:.15},{opacity:.8,offset:.8},{transform:`translate(${-520*S}px,${-50*S}px)`,opacity:0}],{duration:16000,easing:'linear'});
       setTimeout(fly,26000+Math.random()*18000);};
@@ -159,7 +174,8 @@ export function createScroll({levels,audio,onEnter}){
 
   /* ---------- 拖动 ---------- */
   let dragging=false,dragMoved=false,startX=0,lastX=0,vel=0,raf=0,pid=null;
-  function setOffset(o){const min=Math.min(0,innerWidth-TOTAL*S);offset=Math.max(min,Math.min(0,o));$('track').style.transform=`translate3d(${offset}px,0,0)`;}
+  function applyT(){$('track').style.transform=`translate3d(${offset}px,0,0)`+(zoom.z!==1?` translate(${zoom.px}px,${zoom.py}px) scale(${zoom.z}) translate(${-zoom.px}px,${-zoom.py}px)`:'');}
+  function setOffset(o){const min=Math.min(0,innerWidth-TOTAL*S);offset=Math.max(min,Math.min(0,o));applyT();}
   function afterPan(){const vis=visibleRange();tiles.forEach(t=>{if(t.x1>vis[0]-TILE&&t.x0<vis[1]+TILE)schedule(t,false);});}
   const sc=$('scroll');
   sc.addEventListener('pointerdown',e=>{if(e.button>0)return;dragging=true;dragMoved=false;startX=lastX=e.clientX;vel=0;pid=e.pointerId;cancelAnimationFrame(raf);});
@@ -217,6 +233,62 @@ export function createScroll({levels,audio,onEnter}){
       });
     },
     isDone:id=>done.has(id),
+    /* 入画：把题签移到中央，镜头推近，云气合拢 */
+    zoomIn(id){return new Promise(res=>{
+      const L=levels.find(l=>l.id===id),veil=$('veil');
+      const go=()=>{zoom.px=L.x*S;zoom.py=(L.y+110)*S;const r=$('scroll').getBoundingClientRect();
+        veil.style.setProperty('--vx',(offset+zoom.px)+'px');veil.style.setProperty('--vy',(r.top+zoom.py)+'px');veil.hidden=false;veil.style.opacity=0;audio.whoosh();
+        const t0=performance.now(),dur=reduceMotion()?10:820,R=Math.hypot(innerWidth,innerHeight);
+        const f=now=>{const k=Math.min(1,(now-t0)/dur),e=k*k*(3-2*k);zoom.z=1+1.9*e;applyT();veil.style.setProperty('--vr',(e*R)+'px');veil.style.opacity=Math.min(1,e*1.3);
+          if(k<1)requestAnimationFrame(f);else res();};requestAnimationFrame(f);};
+      const target=centerOn(L.x);if(Math.abs(target-offset)>4)panTo(target,420,go);else go();});},
+    zoomOut(){const veil=$('veil');if(veil.hidden&&zoom.z===1)return;const t0=performance.now(),dur=reduceMotion()?10:820,R=Math.hypot(innerWidth,innerHeight);
+      const f=now=>{const k=Math.min(1,(now-t0)/dur),e=k*k*(3-2*k);zoom.z=1+1.9*(1-e);applyT();veil.style.opacity=1-e;veil.style.setProperty('--vr',((1-e)*R)+'px');
+        if(k<1)requestAnimationFrame(f);else{zoom.z=1;applyT();veil.hidden=true;}};requestAnimationFrame(f);},
+    allPlayableDone:()=>levels.filter(l=>l.play).every(l=>done.has(l.id)),
+    /* 卷终：一个长镜头从引首摇到拖尾，青绿随镜头晕开，诸印依次钤上，最后写题跋 */
+    finale(onEnd){
+      const box=$('finale'),col=$('finaleText');box.hidden=true;col.innerHTML='';
+      tiles.forEach(t=>schedule(t,true));
+      const begin=()=>{
+        $('app').classList.add('cine');closeLeaf();audio.setMood('finale');audio.ambience('scroll');
+        const tags=[...document.querySelectorAll('.tag')];tags.forEach(t=>t.classList.remove('done'));
+        setOffset(innerWidth-TOTAL*S);finaleCut=TOTAL+600;applyMasks();$('loading').style.opacity=0;
+        const startOff=offset,dur=reduceMotion()?10:26000,t0=performance.now(),stamped=new Set();
+        /* 长镜头可跳过：点「跳过」或按 Esc */
+        let skip=false;const sk=el('button','btn cine-skip','跳过');$('app').appendChild(sk);
+        const onKey=e=>{if(e.key==='Escape')skip=true;};sk.onclick=()=>{skip=true;};addEventListener('keydown',onKey);
+        const f=now=>{
+          const k=skip?1:Math.min(1,(now-t0)/dur);setOffset(startOff*(1-ease(k)));
+          const cx=(-offset+innerWidth/2)/S;finaleCut=Math.min(finaleCut,cx-innerWidth/S*.04);applyMasks();
+          let n=0;levels.forEach(L=>{if(done.has(L.id)&&!stamped.has(L.id)&&L.x>finaleCut+60){stamped.add(L.id);const t=document.querySelector(`.tag[data-id="${L.id}"]`);t&&t.classList.add('done');if(!n++)audio.thud();}});
+          if(k<1){raf=requestAnimationFrame(f);return;}
+          sk.remove();removeEventListener('keydown',onKey);
+          const c0=finaleCut,t1=performance.now();
+          const g=now=>{const q=Math.min(1,(now-t1)/1600);finaleCut=c0+(-400-c0)*ease(q);applyMasks();if(q<1)requestAnimationFrame(g);else writeColophon();};requestAnimationFrame(g);
+        };
+        raf=requestAnimationFrame(f);
+      };
+      const writeColophon=()=>{
+        const ids=levels.filter(l=>done.has(l.id)).sort((a,b)=>b.x-a.x).map(l=>LESSON[l.id]);
+        const cols=['千里江山　一卷运筹'];for(let i=0;i<ids.length;i+=2)cols.push(ids.slice(i,i+2).join('　'));
+        cols.push('凡此诸策　皆运筹也');if(done.size<levels.length)cols.push('余下诸处　尚待续笔');cols.push('得之者　可以决胜千里之外');
+        col.innerHTML='';let t=300;const step=reduceMotion()?0:110;
+        cols.forEach((c,i)=>{const p=el('p',i===0?'fh':'');t=writeChars(p,c,t,step)+320;col.appendChild(p);});
+        const sig=el('p','fs');t=writeChars(sig,'刘翰林 @ SUSTech · Claude　丙午年秋',t,step*.5);col.appendChild(sig);
+        const sc=el('canvas','fseal');sc.width=sc.height=160;sealCanvas(sc,'运筹帷幄');col.appendChild(sc);
+        box.hidden=false;box.classList.remove('sealed');audio.paper();
+        setTimeout(()=>{box.classList.add('sealed');audio.thud();audio.bell();},t+400);
+        setTimeout(()=>{$('finaleActs').hidden=false;},t+1300);
+      };
+      const wait=()=>{if(tiles.every(t=>t.colDone))begin();else{$('loading').style.opacity=1;setTimeout(wait,120);}};
+      $('finaleActs').hidden=true;
+      $('finaleAgain').onclick=()=>{box.hidden=true;this.finale(onEnd);};
+      $('finaleHome').onclick=()=>{box.hidden=true;finaleCut=null;$('app').classList.remove('cine');applyMasks();
+        document.querySelectorAll('.tag').forEach(t=>t.classList.toggle('done',done.has(t.dataset.id)));audio.setMood('scroll');
+        panTo(innerWidth-TOTAL*S,2600,()=>onEnd&&onEnd());};
+      wait();
+    },
     /* 测试用 */
     _debug:{setOffset,centerOn,afterPan,get S(){return S;}}
   };

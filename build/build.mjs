@@ -11,7 +11,7 @@ const ROOT=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const SRC=path.join(ROOT,'src'),DIST=path.join(ROOT,'dist');
 const rd=p=>fs.readFileSync(p,'utf8');
 
-/* 1. 按依赖顺序拼接模块 */
+/* 1. 按依赖顺序打包模块：每个模块包进自己的函数作用域，导出挂到 __m 上 */
 const order=[],seen=new Set();
 function visit(file){
   if(seen.has(file))return;seen.add(file);
@@ -20,17 +20,35 @@ function visit(file){
   order.push(file);
 }
 visit(path.join(SRC,'main.js'));
-let js='';
+const id=f=>JSON.stringify(path.relative(SRC,f));
+/* 读出 export const/let 语句里所有声明的名字（顶层逗号分隔） */
+function declNames(code,pos){
+  const names=[];let i=pos,depth=0,start=pos,q=null;
+  const flush=()=>{const m=code.slice(start,i).match(/^\s*([A-Za-z_$][\w$]*)/);if(m)names.push(m[1]);};
+  for(;i<code.length;i++){const ch=code[i];
+    if(q){if(ch==='\\'){i++;continue;}if(ch===q)q=null;continue;}
+    if(ch==='"'||ch==="'"||ch==='`'){q=ch;continue;}
+    if('([{'.includes(ch))depth++;else if(')]}'.includes(ch))depth--;
+    else if(depth===0&&ch===','){flush();start=i+1;}
+    else if(depth===0&&(ch===';'||ch==='\n')){flush();return names;}}
+  flush();return names;
+}
+let js='const __m={};\n';
 for(const f of order){
   let code=rd(f);
   if(/\bimport\s*\{[^}]*\bas\b/.test(code))throw new Error('打包器不支持 import … as：'+f);
   code=code.replace(/\/\*[\s\S]*?\*\//g,'').replace(/^\s*\/\/.*$/gm,'');
-  code=code.replace(/^import\s*\{[^}]*\}\s*from\s*'[^']+';?\s*$/gm,'').replace(/^export\s+(?=(async\s+)?(function|const|let|class)\b)/gm,'');
+  code=code.replace(/^import\s*\{([^}]*)\}\s*from\s*'([^']+)';?\s*$/gm,(_,names,dep)=>`const {${names}}=__m[${id(path.resolve(path.dirname(f),dep))}];`);
+  const exported=[];
+  code=code.replace(/^export\s+((?:async\s+)?function\*?|class)\s+([A-Za-z_$][\w$]*)/gm,(_,kw,name)=>{exported.push(name);return kw+' '+name;});
+  let m;const re=/^export\s+(const|let)\s+/gm;const decls=[];
+  while((m=re.exec(code)))decls.push({at:m.index,len:m[0].length,kw:m[1]});
+  for(let k=decls.length-1;k>=0;k--){const d=decls[k];exported.push(...declNames(code,d.at+d.len));code=code.slice(0,d.at)+d.kw+' '+code.slice(d.at+d.len);}
   if(/^\s*export\b/m.test(code))throw new Error('不支持的 export 写法：'+f);
-  js+=`\n/* ---- ${path.relative(SRC,f)} ---- */\n`+code;
+  js+=`\n/* ---- ${path.relative(SRC,f)} ---- */\n__m[${id(f)}]=(()=>{\n${code}\nreturn{${exported.join(',')}};\n})();\n`;
 }
 js=`(()=>{"use strict";\n${js}\n})();`;
-new vm.Script(js,{filename:'bundle.js'});            // 语法与重名检查
+new vm.Script(js,{filename:'bundle.js'});            // 语法检查
 
 /* 2. 字体：检查缺字，必要时自动重新子集化 */
 const html=rd(path.join(SRC,'index.html')),css=rd(path.join(SRC,'style.css'));

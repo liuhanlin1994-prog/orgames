@@ -8,7 +8,7 @@ const GAN='甲乙丙丁戊己庚辛壬癸子丑';
 const STAGES={1:{name:'第一程 · 凭直觉',n:6,seed:1207},2:{name:'第二程 · 解结',n:11,seed:2311},3:{name:'第三程 · 群岛',n:29,seed:4409}};
 
 export const tspLevel={
-  id:'tsp',title:'七洲洋',
+  id:'tsp',title:'七洲洋',concept:'旅行商问题',ambience:'sea',poem:['云帆高张','昼夜星驰'],poemSrc:'郑和《天妃灵应之记》',
   colophon:{head:'旅行商问题',seal:'巧解',
     lines:['遍访诸岛而返，求其至短。','岛愈多，路数愈是爆炸，逐条枚举永不能尽。','然航线相交，必有更短之走法；','就近而行，再逐一解结，顷刻可得近优之解。'],
     note:'今之快递派送、巡检排程、电路钻孔，皆用此术。'},

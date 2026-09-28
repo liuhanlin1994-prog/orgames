@@ -7,7 +7,7 @@ import {TEA_R1,TEA_R2,TEA_TOKENS,TEA_R2_TARGET,teaDur,teaSchedule,teaCanPlace,te
 const ICON={kettle:(c,s)=>kettle(c,s*.46,s*.86,s*.95),boil:(c,s)=>{stove(c,s*.5,s*.98,s*.8,true);kettle(c,s*.5,s*.45,s*.62);},pot:(c,s)=>teapot(c,s*.52,s*.8,s*1.35),cups:(c,s)=>{cup(c,s*.33,s*.78,s*1.6);cup(c,s*.68,s*.78,s*1.6);},leaf:(c,s)=>caddy(c,s*.5,s*.86,s*1.9)};
 
 export const teaLevel={
-  id:'tea',title:'茶寮',
+  id:'tea',title:'茶寮',concept:'统筹方法',ambience:'tea',poem:['寒夜客来茶当酒','竹炉汤沸火初红'],poemSrc:'杜耒《寒夜》',
   colophon:{head:'统筹方法',seal:'统筹',
     lines:['烧水之时，洗壶洗杯拿茶叶——事有先后，亦可同时。','诸事首尾相接最长的一条，谓之关键路径，总工期由它而定。','欲求其快，须快在关键路径上；快到一定，关键路径亦会转移。'],
     note:'华罗庚《统筹方法》以泡茶为例推广此法。宋时丁谓修宫，挖街取土、引水行舟、以渣填渠，一举而三役济，亦统筹之妙。'},

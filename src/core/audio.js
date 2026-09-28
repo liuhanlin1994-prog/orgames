@@ -37,9 +37,12 @@ const SECTION_TYPES={
   A2:       {pad:1,bass:1,arp:'flow',melody:1},
   interlude:{pad:1,bass:1,arp:'sparse',melody:0,zheng:1,harm:1},
   calm:     {pad:.7,bass:.8,arp:'sparse',melody:0,harm:1,quiet:1},      // 关卡里：安静、不抢注意力
-  calm2:    {pad:.7,bass:.8,arp:'still',melody:0,zheng:1,quiet:1}
+  calm2:    {pad:.7,bass:.8,arp:'still',melody:0,zheng:1,quiet:1},
+  prelude:  {pad:.55,bass:.5,arp:'still',melody:0,harm:1,quiet:1},             // 序章：空灵
+  grandA:   {pad:1.15,bass:1,arp:'flow',melody:1,bell:1,bells:1,gliss:1},      // 卷终：盛大
+  grandB:   {pad:1.15,bass:1,arp:'wave',melody:1,high:1,bell:1,bells:1,gliss:1}
 };
-const FORM={scroll:['intro','A','B','A2','interlude','A','B','interlude'],level:['calm','calm2']};
+const FORM={scroll:['intro','A','B','A2','interlude','A','B','interlude'],level:['calm','calm2'],prelude:['prelude'],finale:['grandA','grandB','grandA','grandB']};
 
 export function createAudio(){
   let ac=null,out=null,musicBus=null,sfxBus=null,verbIn=null,noiseBuf=null,xiaoWave=null;
@@ -140,7 +143,7 @@ export function createAudio(){
       const chordDur=BAR*2;
       if(S.pad)pad(t0,[degHz(root),degHz(root+3),degHz(root+5)],chordDur+1.8,.032*S.pad);
       if(S.bass){pluck(t0,degHz(root),.34*S.bass*q,{bright:.32,dur:4.6});pluck(t0,degHz(root-5),.2*S.bass*q,{bright:.25,dur:4.6});}
-      if(S.bell&&chordPos===0&&barIdx%8===0)bell(t0+.02,degHz(root+15),.035);
+      if(S.bell&&((chordPos===0&&barIdx%8===0)||S.bells))bell(t0+.02,degHz(root+15),S.bells?.045:.035);
       if(S.melody&&!(chordPos===2&&rnd()<.35)){
         const m=pickMotif(root,chordPos===3);const lift=S.high&&Math.max(...m.map(n=>n[0]))<=10?5:0;
         const notes=[];let t=0;
@@ -178,9 +181,48 @@ export function createAudio(){
     live.forEach(x=>{try{x.node.stop(t+.75);}catch(e){}});live=[];nextBar=0;
   }
 
-  return{
+  /* ---------- 环境声：风、溪、人声、海潮、室内 ---------- */
+  let ambBus=null,beds=null,ambKind='none',ambTimer=0,ambEvtTimer=0;
+  const AMB={scroll:{wind:.7,water:.45},sea:{sea:1,wind:.35},city:{crowd:1,wind:.3},inn:{indoor:1,crowd:.45},race:{crowd:.85,wind:.5},tea:{wind:.3,water:.35},market:{wind:.6,crowd:.3},prelude:{wind:.25},none:{}};
+  function noiseSrc(){const s=ac.createBufferSource();s.buffer=noiseBuf;s.loop=true;s.start(ac.currentTime,Math.random()*1.5);return s;}
+  function mkBed(chain,base){const g=ac.createGain();g.gain.value=0;chain(noiseSrc()).connect(g);g.connect(ambBus);return{g,base,level:0};}
+  function buildBeds(){
+    ambBus=ac.createGain();ambBus.gain.value=0;const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=5000;ambBus.connect(lp);lp.connect(out);lp.connect(verbIn);
+    const bp=(f,q)=>{const b=ac.createBiquadFilter();b.type='bandpass';b.frequency.value=f;b.Q.value=q;return b;};
+    const lfo=(param,rate,depth)=>{const o=ac.createOscillator();o.frequency.value=rate;const g=ac.createGain();g.gain.value=depth;o.connect(g);g.connect(param);o.start();};
+    beds={
+      wind:mkBed(n=>{const b=bp(480,.7);lfo(b.frequency,.061,260);n.connect(b);return b;},.02),
+      water:mkBed(n=>{const b=bp(1900,1.3);n.connect(b);return b;},.007),
+      crowd:mkBed(n=>{const a=bp(560,.9),b=bp(1150,1.4),m=ac.createGain();n.connect(a);n.connect(b);a.connect(m);b.connect(m);return m;},.022),
+      sea:mkBed(n=>{const l=ac.createBiquadFilter();l.type='lowpass';l.frequency.value=520;n.connect(l);return l;},.028),
+      indoor:mkBed(n=>{const l=ac.createBiquadFilter();l.type='lowpass';l.frequency.value=850;n.connect(l);return l;},.012)
+    };
+  }
+  function ambTick(){ // 让声底有起伏：溪水碎、人声忽高忽低、海潮一涌一退
+    if(!beds)return;const t=ac.currentTime;
+    for(const k in beds){const b=beds[k];if(!b.level)continue;let v=b.base*b.level;
+      if(k==='water')v*=.55+Math.random()*.9;else if(k==='crowd')v*=.55+Math.random()*.7;else if(k==='sea')v*=.25+.75*(.5+.5*Math.sin(t*.63));else if(k==='wind')v*=.7+.3*Math.sin(t*.21);
+      b.g.gain.setTargetAtTime(v,t,k==='sea'?.4:.12);}
+  }
+  function ambEvents(){ // 偶发的点缀：鸟鸣、驼铃、杯盏
+    if(!on||!beds)return;const k=ambKind;
+    if(k==='scroll'&&Math.random()<.5)api.chirp();
+    if(k==='city')api.camelBell();
+    if(k==='inn'&&Math.random()<.6)api.clink();
+    if(k==='market'&&Math.random()<.35)api.chirp();
+    ambEvtTimer=setTimeout(ambEvents,5000+Math.random()*9000);
+  }
+  function setAmb(kind){
+    ambKind=kind;if(!ac)return;if(!beds)buildBeds();const mix=AMB[kind]||{};const t=ac.currentTime;
+    for(const k in beds){beds[k].level=mix[k]||0;if(!beds[k].level)beds[k].g.gain.setTargetAtTime(0,t,.6);}
+  }
+  function ambOn(v){if(!ac||!beds)return;const t=ac.currentTime;ambBus.gain.cancelScheduledValues(t);ambBus.gain.setTargetAtTime(v?1:0,t,v?.8:.25);
+    clearInterval(ambTimer);clearTimeout(ambEvtTimer);if(v){ambTimer=setInterval(ambTick,160);ambEvtTimer=setTimeout(ambEvents,3000);}}
+
+  const api={
     unlock(){if(!ac){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;build(new AC());}if(ac.state==='suspended')ac.resume();},
-    music(v){this.unlock();if(!ac)return false;const want=v==null?!on:v;if(want&&!on)start();else if(!want&&on)stop();return on;},
+    music(v){this.unlock();if(!ac)return false;const want=v==null?!on:v;if(want&&!on)start();else if(!want&&on)stop();if(!beds)setAmb(ambKind==='none'?'scroll':ambKind);ambOn(on);return on;},
+    ambience(kind){setAmb(kind);if(on)ambOn(true);},
     isOn:()=>on,
     setMood(m){if(m===mood||!FORM[m])return;mood=m;secIdx=0;barIdx=barIdx-(barIdx%2);  // 下一小节起换编排
       if(ac&&on){const t=ac.currentTime;musicBus.gain.cancelScheduledValues(t);musicBus.gain.setValueAtTime(musicBus.gain.value,t);musicBus.gain.linearRampToValueAtTime(.35,t+.6);musicBus.gain.linearRampToValueAtTime(.8,t+3.5);}},
@@ -192,7 +234,27 @@ export function createAudio(){
     gliss(){if(!ac)return;const t=ac.currentTime;for(let i=0;i<10;i++)pluck(t+i*.035,degHz(5+i),.08+i*.012,{bright:.78,dur:1.6,bus:sfxBus});},
     bell(){if(!ac)return;bell(ac.currentTime,degHz(15),.07,sfxBus);},
     thud(){if(!ac)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();o.frequency.setValueAtTime(120,t);o.frequency.exponentialRampToValueAtTime(48,t+.25);
-      g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.7,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+.35);o.connect(g);g.connect(sfxBus);o.start(t);o.stop(t+.4);woodblock(t,.08,sfxBus);},
+      g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.7,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+.35);o.connect(g);g.connect(sfxBus);o.start(t);o.stop(t+.4);woodblock(t,.08,sfxBus);api.vibrate(18);},
+    /* 马蹄：三拍一组的跑马节奏 */
+    gallop(dur,v){if(!ac)return;const t0=ac.currentTime;v=v||.5;const stride=.36;
+      for(let t=0;t<dur;t+=stride)[0,.08,.2].forEach((d,i)=>{const tt=t0+t+d+(Math.random()-.5)*.02;if(tt>t0+dur)return;
+        const s=ac.createBufferSource();s.buffer=noiseBuf;const f=ac.createBiquadFilter();f.type='lowpass';f.frequency.value=260+i*40;const g=ac.createGain();const a=v*(i===2?1:.62)*(.8+Math.random()*.4);
+        g.gain.setValueAtTime(0,tt);g.gain.linearRampToValueAtTime(a,tt+.006);g.gain.exponentialRampToValueAtTime(.0001,tt+.09);s.connect(f);f.connect(g);g.connect(sfxBus);s.start(tt,Math.random());s.stop(tt+.12);
+        const o=ac.createOscillator();o.frequency.setValueAtTime(95,tt);o.frequency.exponentialRampToValueAtTime(55,tt+.07);const og=ac.createGain();og.gain.setValueAtTime(0,tt);og.gain.linearRampToValueAtTime(a*.5,tt+.005);og.gain.exponentialRampToValueAtTime(.0001,tt+.08);o.connect(og);og.connect(sfxBus);o.start(tt);o.stop(tt+.1);});},
+    cheer(v){if(!ac)return;const t=ac.currentTime,s=ac.createBufferSource();s.buffer=noiseBuf;s.loop=true;const a=ac.createBiquadFilter();a.type='bandpass';a.frequency.value=900;a.Q.value=.6;const g=ac.createGain();
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime((v||.12),t+.35);g.gain.setTargetAtTime(0,t+.8,.35);s.connect(a);a.connect(g);g.connect(sfxBus);s.start(t,Math.random());s.stop(t+2.6);},
+    coin(){if(!ac)return;const t=ac.currentTime;[[2637,.06,.35],[3951,.035,.22],[5274,.02,.12]].forEach(([f,a,d],i)=>{[0,.075].forEach((dt,j)=>{const o=ac.createOscillator();o.type='sine';o.frequency.value=f*(j?1.012:1);const g=ac.createGain();
+      g.gain.setValueAtTime(0,t+dt);g.gain.linearRampToValueAtTime(a*(j?.7:1),t+dt+.002);g.gain.exponentialRampToValueAtTime(.0001,t+dt+d);o.connect(g);g.connect(sfxBus);o.start(t+dt);o.stop(t+dt+d+.02);});});},
+    clink(){if(!ac)return;const t=ac.currentTime;[[3100,.025,.25],[4650,.012,.15]].forEach(([f,a,d])=>{const o=ac.createOscillator();o.frequency.value=f;const g=ac.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(a,t+.002);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(ambBus||sfxBus);o.start(t);o.stop(t+d+.02);});},
+    chirp(){if(!ac)return;const t0=ac.currentTime,n=2+Math.floor(Math.random()*3),base=2800+Math.random()*900;
+      for(let i=0;i<n;i++){const t=t0+i*(.09+Math.random()*.05),o=ac.createOscillator();o.type='sine';o.frequency.setValueAtTime(base,t);o.frequency.exponentialRampToValueAtTime(base*1.35,t+.05);o.frequency.exponentialRampToValueAtTime(base*.9,t+.08);
+        const g=ac.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.018,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+.09);o.connect(g);g.connect(ambBus||sfxBus);o.start(t);o.stop(t+.1);}},
+    camelBell(){if(!ac)return;const t=ac.currentTime,f=degHz(9)*(Math.random()<.5?1:1.1225);for(let i=0;i<2+Math.floor(Math.random()*2);i++)bell(t+i*.42+Math.random()*.05,f,.022,ambBus||sfxBus);},
+    rods(){if(!ac)return;const t=ac.currentTime;[0,.045].forEach((d,i)=>{const o=ac.createOscillator();o.type='triangle';o.frequency.setValueAtTime(1500-i*300,t+d);o.frequency.exponentialRampToValueAtTime(700,t+d+.04);
+      const g=ac.createGain();g.gain.setValueAtTime(0,t+d);g.gain.linearRampToValueAtTime(.09,t+d+.002);g.gain.exponentialRampToValueAtTime(.0001,t+d+.07);o.connect(g);g.connect(sfxBus);o.start(t+d);o.stop(t+d+.08);});},
+    whoosh(){if(!ac)return;const t=ac.currentTime,s=ac.createBufferSource();s.buffer=noiseBuf;const f=ac.createBiquadFilter();f.type='bandpass';f.Q.value=.8;f.frequency.setValueAtTime(280,t);f.frequency.exponentialRampToValueAtTime(2400,t+.55);
+      const g=ac.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.07,t+.2);g.gain.exponentialRampToValueAtTime(.0001,t+.7);s.connect(f);f.connect(g);g.connect(sfxBus);s.start(t,Math.random());s.stop(t+.75);},
+    vibrate(ms){try{navigator.vibrate&&navigator.vibrate(ms||20);}catch(e){}},
     paper(){if(!ac)return;const t=ac.currentTime,s=ac.createBufferSource();s.buffer=noiseBuf;const f=ac.createBiquadFilter();f.type='bandpass';f.frequency.value=2200;f.Q.value=.6;const g=ac.createGain();
       g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.05,t+.05);g.gain.exponentialRampToValueAtTime(.0001,t+.35);s.connect(f);f.connect(g);g.connect(sfxBus);s.start(t,Math.random());s.stop(t+.4);},
     /* 离线渲染自检：把一段配乐渲染成 PCM，给测试脚本看电平 */
@@ -205,4 +267,5 @@ export function createAudio(){
       return buf;
     }
   };
+  return api;
 }

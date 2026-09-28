@@ -22,12 +22,25 @@
     <div class="count" title="已钤印的关卡">钤印 <b id="sealCount">0</b> / 11</div>
     <button class="btn red" id="nextBtn">下一处 ←</button>
     <button class="btn" id="previewBtn" aria-pressed="false">终卷预览</button>
+    <button class="btn" id="prologueBtn">序章</button>
+    <button class="btn red" id="finaleBtn" hidden>卷终</button>
     <button class="btn" id="sndBtn" aria-pressed="false">琴声 · 关</button>
     <div class="brand"><b>千里江山 · 运筹录</b></div>
   </div>
   <div id="hint">手卷自右向左展开　·　拖动观卷　·　点题签入画</div>
   <div id="loading">研墨中</div>
 
+  <div id="veil" hidden></div>
+  <div id="finale" hidden>
+    <div class="fin-in"><div id="finaleText"></div>
+      <div id="finaleActs" hidden><button class="btn" id="finaleAgain">再观卷终</button><button class="btn red" id="finaleHome">回到卷首</button></div></div>
+  </div>
+  <div id="intro" hidden>
+    <canvas id="introCv"></canvas>
+    <div id="introText" class="itxt"></div>
+    <div id="introTitle"></div>
+    <button class="btn" id="introSkip">跳过 ›</button>
+  </div>
   <div id="curtain"><div class="veil"></div><div class="roller"></div></div>
   <div id="cover">
     <div class="rolled">
@@ -66,6 +79,10 @@
         <div class="line" id="rLine"></div>
       </div>
     </div>
+    <div id="lvIntro" hidden>
+      <div class="li-in"><div class="li-nm" id="liName"></div><div class="li-cp" id="liConcept"></div><div class="li-poem" id="liPoem"></div><div class="li-src" id="liSrc"></div></div>
+      <div class="li-tap">点按继续</div>
+    </div>
     <div class="foot">
       <div class="say" id="say" aria-live="polite"></div>
       <div class="acts" id="acts"></div>
@@ -73,7 +90,7 @@
   </div>
 
   <div id="colo" hidden>
-    <div class="sheet"><div class="page">
+    <div class="sheet" id="coloSheet"><div class="page">
       <div class="v" id="coloV"></div>
       <button class="btn red" id="coloBack">钤印 · 回到长卷</button>
     </div></div>

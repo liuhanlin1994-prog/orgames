@@ -10,7 +10,7 @@ const cnNum=n=>n<=10?CN[n]:n<20?'十'+CN[n-10]:CN[Math.floor(n/10)]+'十'+(n%10?
 const pct=p=>(p*100).toFixed(1)+'%';
 
 export const horseLevel={
-  id:'horse',title:'马市',
+  id:'horse',title:'马市',concept:'最优停止',ambience:'market',poem:['世有伯乐','然后有千里马'],poemSrc:'韩愈《马说》',
   colophon:{head:'最优停止',seal:'伯乐',
     lines:['马一匹匹过，看过不能回头，何时出手？','先只看不买约三成七，记住其中最好的；','之后遇到比它更好的，立刻买下。','此法不能保证每回都得千里马，却是赢面最大的规矩：人越多，赢面越近三成七。'],
     note:'今之招聘、租房、定价、择时，皆可借此。'},
