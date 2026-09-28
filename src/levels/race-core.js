@@ -1,29 +1,60 @@
-/* 赛马（田忌赛马）的逻辑。不碰 DOM。
-   马分三等：3 上驷、2 中驷、1 下驷。齐王同等的马都比田忌快一档；
-   但田忌的上驷快过齐王的中驷，田忌的中驷快过齐王的下驷。三场两胜。 */
-export const ORDERS=[[3,2,1],[3,1,2],[2,3,1],[2,1,3],[1,3,2],[1,2,3]];
-export const orderKey=o=>o.join('');
-export const TIER_NAME={3:'上驷',2:'中驷',1:'下驷'};
-export function raceWins(t,k){let w=0;for(let i=0;i<3;i++)if(t[i]>k[i])w++;return w;}
-export const matchWon=(t,k)=>raceWins(t,k)>=2;
-/* 孙膑之策：以下驷对上驷，上驷对中驷，中驷对下驷 */
-export function counterOf(k){const m={3:1,2:3,1:2};return k.map(x=>m[x]);}
-/* 第二回：齐王出马的习惯（每百场的次数） */
-export const HABIT={'321':45,'312':15,'231':15,'213':9,'132':8,'123':8};
-/* 出马簿上的旧账：近二十场，按习惯的比例 */
-export const LEDGER20=['321','312','321','231','321','213','321','132','312','321','231','321','123','321','312','213','321','231','132','321'];
-export function habitSample(rnd){let x=rnd()*100;for(const k in HABIT){x-=HABIT[k];if(x<0)return k.split('').map(Number);}return[3,2,1];}
-export function habitWinProb(t){let p=0;for(const k in HABIT)if(matchWon(t,k.split('').map(Number)))p+=HABIT[k]/100;return p;}
-/* 第三回：会算的齐王。猜你这一局的次序——四成猜你上一局的，六成猜你出得最多的（一样多就取最近的）——
-   然后拿同等的马一一压住你（镜像），你一场也赢不了。 */
-export function kingPredict(history,rnd){
-  if(!history.length)return ORDERS[Math.floor(rnd()*6)].slice();
-  if(rnd()<.4)return history[history.length-1].slice();
-  const cnt={};history.forEach(o=>{const k=orderKey(o);cnt[k]=(cnt[k]||0)+1;});
-  let best=null,bc=-1;for(let i=history.length-1;i>=0;i--){const k=orderKey(history[i]);if(cnt[k]>bc){bc=cnt[k];best=history[i];}}
-  return best.slice();
+/* 赛马（田忌赛马 · 指派）的逻辑。不碰 DOM。
+   每匹马一个脚力值；同场相遇，脚力高者胜，相等则齐王胜（田忌的马每一等都慢一截）。 */
+export const CNUM=['〇','一','二','三','四','五','六','七','八','九','十','十一','十二'];
+export const beats=(a,b)=>a>b;
+
+/* 明牌时最多能赢几场：把两边从弱到强排好，每匹对手的马都找「刚好能赢它」的那匹（最大匹配） */
+export function maxWins(mine,opp){
+  const a=[...mine].sort((x,y)=>x-y),b=[...opp].sort((x,y)=>x-y);let i=0,j=0,w=0;
+  while(i<a.length&&j<b.length){if(a[i]>b[j]){w++;j++;}i++;}
+  return w;
 }
-export const kingMirror=pred=>pred.slice();
-export function raceGrade2(avgP){return avgP>=.44?'至妙':avgP>=.3?'上品':avgP>=.17?'中品':'下品';}
-export function raceGrade3(hits){return hits<=2?'至妙':hits===3?'上品':hits<=5?'中品':'下品';}
-export const R3_MATCHES=8, R2_MATCHES=5;
+/* 给出一种赢得最多的排法：lanes[k] = 我方派出的马在 mine 里的下标（对手第 k 场是 opp[k]） */
+export function bestAssign(mine,opp){
+  const n=opp.length,lanes=new Array(n).fill(-1),used=new Array(mine.length).fill(false);
+  const oi=opp.map((v,k)=>k).sort((p,q)=>opp[p]-opp[q]),mi=mine.map((v,k)=>k).sort((p,q)=>mine[p]-mine[q]);
+  let i=0;for(const k of oi){while(i<mi.length&&mine[mi[i]]<=opp[k])i++;if(i<mi.length){lanes[k]=mi[i];used[mi[i]]=true;i++;}}
+  const rest=mi.filter(k=>!used[k]);for(let k=0;k<n;k++)if(lanes[k]<0)lanes[k]=rest.shift();
+  return lanes;
+}
+export const countWins=(mine,opp,lanes)=>lanes.reduce((s,m,k)=>s+(m!=null&&m>=0&&beats(mine[m],opp[k])?1:0),0);
+/* 「同等相对」：强对强、弱对弱 */
+export function sameRankWins(mine,opp){const a=[...mine].sort((x,y)=>y-x),b=[...opp].sort((x,y)=>y-x);return a.reduce((s,v,i)=>s+(v>b[i]?1:0),0);}
+
+/* 孙膑的规矩：能赢，就用刚好能赢的那匹；赢不了，就派最弱的那匹去输 */
+export function sunbinPick(mine,avail,v){
+  let win=-1,low=-1;
+  for(const i of avail){if(mine[i]>v&&(win<0||mine[i]<mine[win]))win=i;if(low<0||mine[i]<mine[low])low=i;}
+  return win>=0?win:low;
+}
+
+/* 暗盘：对手的马匹已知、出场次序不知，一场一场翻开。V(我方剩余, 对手剩余) = 往后最多还能期望赢几场 */
+export function onlineSolver(mine,opp){
+  const n=mine.length,memo=new Map();
+  const V=(mm,om)=>{if(!om)return 0;const k=mm*4096+om;const hit=memo.get(k);if(hit!=null)return hit;let s=0,c=0;
+    for(let j=0;j<n;j++)if(om>>j&1){c++;let b=-1;for(let i=0;i<n;i++)if(mm>>i&1){const v=(beats(mine[i],opp[j])?1:0)+V(mm&~(1<<i),om&~(1<<j));if(v>b)b=v;}s+=b;}
+    const r=s/c;memo.set(k,r);return r;};
+  /* 翻开对手第 j 匹时，派第 i 匹是否「妙手」（期望不吃亏） */
+  const value=(mm,om,j,i)=>(beats(mine[i],opp[j])?1:0)+V(mm&~(1<<i),om&~(1<<j));
+  const isBest=(mm,om,j,i)=>{let b=-1;for(let k=0;k<n;k++)if(mm>>k&1)b=Math.max(b,value(mm,om,j,k));return value(mm,om,j,i)>=b-1e-9;};
+  return{V,value,isBest,full:(1<<n)-1};
+}
+
+/* ---------- 三回合 ---------- */
+export const R1={king:[9,6,3],mine:[8,5,2],tier:['上驷','中驷','下驷']};
+/* 擂台：三位诸侯，马一位比一位多；脚力总和都比你高 */
+export const R2=[
+  {nm:'魏王',opp:[5,9,3,7],mine:[4,8,2,6],secs:40},
+  {nm:'楚王',opp:[7,4,10,5,8],mine:[3,9,6,2,9],secs:45},
+  {nm:'秦王',opp:[8,2,11,5,10,7],mine:[6,10,3,9,4,8],secs:55}
+];
+/* 暗盘：对手出场次序不知，只知道他有哪几匹马 */
+export const R3=[
+  {nm:'赵王',opp:[9,7,6,4,2],mine:[8,7,5,3,1]},
+  {nm:'燕王',opp:[10,8,5,4,3],mine:[9,6,6,4,2]},
+  {nm:'齐王',opp:[11,9,8,6,3],mine:[10,9,7,5,4]}
+];
+export function gradeR2(won,best){const r=won/best;return r>=1?'至妙':r>=.8?'上品':r>=.6?'中品':'下品';}
+export function gradeR3(good,total){const r=good/total;return r>=.93?'至妙':r>=.8?'上品':r>=.6?'中品':'下品';}
+/* 跑完一场要多久（秒）：快马先到；平局时齐王先到 */
+export const runTime=(v,king)=>.78+.075*(12-v)+(king?0:.02);

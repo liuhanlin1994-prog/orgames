@@ -1,20 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {BASE,SCENES,expRevenue,bestProtect,littlewood,simNights,innGrade,labSeed} from '../src/levels/inn-core.js';
+import {SCENES,PRICES,DAYS,solve,priceAt,bidPrice,genGuests,runPolicy,bestFixed,gradeRatio} from '../src/levels/inn-core.js';
 import {RNG} from '../src/core/rng.js';
 
-test('寻常夜：四座留三座给贵客最好（每夜约 95 文）', ()=>{
-  assert.equal(bestProtect(BASE),3);assert.ok(Math.abs(expRevenue(3,BASE)-95)<1e-9);
-  assert.ok(expRevenue(3,BASE)>expRevenue(4,BASE)&&expRevenue(4,BASE)>expRevenue(2,BASE)&&expRevenue(2,BASE)>expRevenue(0,BASE));
+const mean=(sc,S,price,n=400,seed=1)=>{const r=RNG(seed);let s=0;for(let k=0;k<n;k++)s+=runPolicy(sc,genGuests(sc,r),price).rev;return s/n;};
+
+test('动态规划算出的期望进账，与按它挂牌推演四百旬的平均一致', ()=>{
+  for(const sc of SCENES){const S=solve(sc),v=S.V[0][sc.rooms],m=mean(sc,S,(t,c)=>priceAt(S,t,c));assert.ok(Math.abs(m-v)/v<.04,`${sc.nm}: ${m} vs ${v}`);}
 });
-test('Littlewood 法则与逐一试算的最优一致', ()=>{for(const sc of [BASE,...SCENES])assert.equal(littlewood(sc),bestProtect(sc));});
-test('三种夜晚：价廉留二、价昂留四、罕至留二', ()=>{assert.deepEqual(SCENES.map(bestProtect),[2,4,2]);});
-test('推演一千夜与期望进账一致', ()=>{
-  const r=RNG(3);for(const sc of [BASE,...SCENES])for(let y=0;y<=4;y++){const s=simNights(y,sc,60000,r),e=expRevenue(y,sc);assert.ok(Math.abs(s-e)/e<.02,`${sc.nm} ${y}: ${s} vs ${e}`);}
+test('账房的挂牌胜过任何一口价；贱卖（30 文）只得一半上下', ()=>{
+  for(const sc of SCENES){const S=solve(sc),dp=mean(sc,S,(t,c)=>priceAt(S,t,c)),bf=bestFixed(sc);
+    assert.ok(dp>bf.rev,sc.nm);assert.ok(mean(sc,S,()=>30)<.6*dp,sc.nm+' 贱卖');}
+  // 灯会与第三回：临近灯会盐商才来，一口价明显吃亏
+  for(const sc of SCENES.slice(1)){const S=solve(sc),dp=mean(sc,S,(t,c)=>priceAt(S,t,c)),bf=bestFixed(sc);assert.ok(bf.rev<.95*dp,`${sc.nm}: ${bf.rev} vs ${dp}`);}
 });
-test('评级看规矩', ()=>{assert.equal(innGrade(3,BASE),'至妙');assert.equal(innGrade(0,BASE),'下品');assert.equal(innGrade(4,SCENES[1]),'至妙');});
-test('推演一千夜用同一串夜晚比较规矩：多数随机串的最高点就在留三座；挑出的串一定如此', ()=>{
-  const r=RNG(11);let agree=0;for(let k=0;k<200;k++){const s=1+Math.floor(r()*1e6),v=[0,1,2,3,4].map(y=>simNights(y,BASE,1000,RNG(s)));if(v.indexOf(Math.max(...v))===3)agree++;}
-  assert.ok(agree>=180,'agree '+agree);
-  for(let k=0;k<20;k++){const s=labSeed(r),v=[0,1,2,3,4].map(y=>simNights(y,BASE,1000,RNG(s)));assert.equal(v.indexOf(Math.max(...v)),3);}
+test('房越多、日子越少，挂牌越低；「这间房留着值多少」也一样', ()=>{
+  for(const sc of SCENES){const S=solve(sc);
+    for(const t of [0,3,6,8,9,9.8])for(let c=2;c<=sc.rooms;c++){assert.ok(priceAt(S,t,c)<=priceAt(S,t,c-1),`${sc.nm} t${t} c${c}`);assert.ok(bidPrice(S,t,c)<=bidPrice(S,t,c-1)+1e-9);}
+    assert.ok(bidPrice(S,9.98,sc.rooms)<bidPrice(S,0,1));}
 });
+test('挂牌不低于这间房的机会价值（Littlewood 法则的推广）', ()=>{
+  for(const sc of SCENES){const S=solve(sc);for(const t of [0,2,5,7,9])for(let c=1;c<=sc.rooms;c++)assert.ok(priceAt(S,t,c)>=bidPrice(S,t,c)-1e-9,`${sc.nm} t${t} c${c}`);}
+});
+test('每回合挑的那一旬客人是典型的：一口价与账房之比接近各旬的中位数', ()=>{
+  for(const sc of SCENES){const S=solve(sc),bf=bestFixed(sc),g=genGuests(sc,RNG(sc.seed));
+    const r=runPolicy(sc,g,()=>bf.price).rev/runPolicy(sc,g,(t,c)=>priceAt(S,t,c)).rev;assert.ok(r>.85&&r<1,sc.nm+' '+r);}
+});
+test('评级', ()=>{assert.equal(gradeRatio(1.02),'至妙');assert.equal(gradeRatio(.92),'上品');assert.equal(gradeRatio(.8),'中品');assert.equal(gradeRatio(.5),'下品');assert.equal(DAYS,10);assert.equal(PRICES[0],10);});

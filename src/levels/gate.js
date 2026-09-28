@@ -1,12 +1,14 @@
-/* 城门 · 排队论：开几道门（活的一天）→ 逼近满载（推演百日）→ 怎么排队（各排各队 / 一条长队 / 快者先行） */
+/* 城门 · 排队论（实时守门）：开门迎客（随时开关城门）→ 驼队进城（一米线）→ 上元灯会（工时有限）
+   手感：点城门即开即关；右上角可暂停、一倍、两倍、四倍速；左上角是来客预报与账目。 */
 import {RNG} from '../core/rng.js';
 import {INK,PAPER,BRUSH_FONT,paperBase,paperGrain,house,roof,figure,fitCanvas} from '../core/ink.js';
-import {labChart} from '../core/chart.js';
 import {el,reduceMotion} from '../core/ui.js';
-import {wqMMc,genArrivals,simulate,waitStats,MU,R1,R2,R3,r1Grade,r2MaxLambda,r2Grade,labRun,r3Stats,r3Grade} from './queue-core.js';
+import {GATES,ROUNDS,ANGRY,PENALTY,MU,dayLen,lambdaAt,genDay,createGateSim,bench,gradeRatio} from './queue-core.js';
 
-const CLOCK=['卯初','卯正','辰初','辰正','巳初','巳正','午初'];
-const ARR={separate:'各门各排',pooled:'一条长队',spt:'快者先行'};
+const SAY={1:'你是今天的门官。<b>点城门</b>即开即关；右上角可暂停、调快。门吏每道门每小时工钱 40 文；来客每等一刻折钱约 4 文，等过二十分钟的还会去告状（一状 20 文）。<br>左上角是<b>来客预报</b>，蓝虚线是开着的门每小时能验多少人——柱子高过虚线，队伍就越排越长。赶在人潮前开门，人少了就关。',
+  2:'今天有几支驼队（预报上的「驼」）。各门各排：来客挑人少的门排，驼队结伴排一起，一堵一大片。右上角可以<b>拉一米线</b>：所有人排成一条长队，哪道门空了去哪道。',
+  3:'上元灯会，申时开城、亥时收灯。门吏只剩 18 个<b>加班工时</b>（第一道门不算），用完了只剩一道门。戌时人潮最大——工时要留给灯会。'};
+const GX=[.14,.29,.43,.57,.71,.86],OPEN_ORDER=[2,3,1,4,0,5],SPEEDS=[1,2,4],SEC_PER_HOUR=12;
 
 /* ---------- 来客的样子（s ≈ 一个人的身高；y 为落脚处） ---------- */
 const TINTS=[`rgba(${INK},.16)`,'rgba(170,128,72,.42)','rgba(30,91,115,.3)'];
@@ -53,19 +55,20 @@ function bigWillow(c,r,x,y,s,dir){
   c.restore();
 }
 
+
 export const gateLevel={
   id:'gate',title:'城门',concept:'排队论',ambience:'city',poem:['八荒争凑','万国咸通'],poemSrc:'孟元老《东京梦华录》',
   colophon:{head:'排队论',seal:'疏通',
-    lines:['来者如流，去者如缕；门若恰好够用，队伍便无尽头。','忙到九成，尚可周旋；再进一步，等候便如山崩。','诸门共用一条长队，胜过各排各队；快者先行，平均更短，却失了公平。'],
-    note:'今之医院挂号、客服热线、机场安检、服务器扩容，皆算此账。'},
+    lines:['来者如流，门若恰好够用，队伍便无尽头；忙到九成以上，等候陡涨。','看预报，赶在人潮之前开门；人潮一过，便该收门省钱。','诸门共用一条长队，胜过各排各队：没人被插队，最久的等候也短。','人手有限时，留给最挤的时辰。'],
+    note:'今之医院挂号、客服排班、机场安检、服务器扩容，皆算此账。'},
   start(ui,audio){
-    const S={round:1,c:4,day:null,t:0,playing:false,speed:1,disc:'pooled',sprites:null,pos:new Map(),lab:{tries:new Map(),curve:false,lam:40},arrSeen:{},r3:null,raf:0};
+    const S={round:0,sc:null,arr:null,sim:null,bench:null,speed:2,paused:true,running:false,done:false,pos:new Map(),series:[],lastRec:-1,raf:0,sprites:null,angry:new Set(),hudAcc:0,maxQ:0};
     const root=el('div','gate');ui.stage.appendChild(root);
-    let W=0,H=0,bg,fg,hud,spark,ctl,tabs=null,table=null;
-
-    /* ---------- 城门与街面 ---------- */
-    function gatesX(c){const all=[.14,.29,.43,.57,.71,.86];const pick=[2,3,1,4,0,5].slice(0,c).sort((a,b)=>a-b);return pick.map(i=>all[i]*W);}
+    const bg=el('canvas','gate-bg'),fg=el('canvas','gate-fg'),gbtns=el('div','gate-btns'),hud=el('div','gate-hud'),ctl=el('div','gate-ctl');
+    [bg,fg,gbtns,hud,ctl].forEach(e=>root.appendChild(e));
+    let W=0,H=0,review=null;
     function geo(){const wt=H*.19,wb=H*.36,s=Math.max(16,Math.min(38,H*.062,W*.07));return{wt,wb,gy:wb+H*.045,front:wb+H*.14,dy:Math.max(20,Math.min(H*.062,s*1.9)),s};}
+    const gateW=()=>Math.min(W/10,geo().s*2.1);
     function drawScene(){
       W=root.clientWidth;H=root.clientHeight;const c=fitCanvas(bg,W,H),G=geo(),r=RNG(3),ink=a=>`rgba(${INK},${a})`;paperBase(c,0,0,W,H);
       /* 远山 */
@@ -92,17 +95,14 @@ export const gateLevel={
       roof(c,cx,G.wt-th*.84,tw*.64,th*.2,.92);
       const pw=Math.max(12,th*.13),ph=pw*2.1;c.fillStyle=ink(.85);c.fillRect(cx-pw/2,G.wt-th*.47,pw,ph);c.fillStyle='rgba(200,160,70,.95)';c.font=`${Math.round(pw*.72)}px ${BRUSH_FONT}`;c.textAlign='center';c.textBaseline='middle';
       c.fillText('汴',cx,G.wt-th*.47+ph*.3);c.fillText('京',cx,G.wt-th*.47+ph*.72);
-      /* 六道门 */
-      const open=new Set(gatesX(S.round===3?R3.c:S.round===2?5:S.c).map(Math.round)),gw=Math.min(W/10,G.s*2.1),gh=(G.wb-G.wt)*.8;
-      [.14,.29,.43,.57,.71,.86].forEach(f=>{const x=f*W,isOpen=open.has(Math.round(x));
+      /* 六道门：底图只画门洞，门扇与门吏画在前景（随开随关） */
+      const gw=gateW(),gh=(G.wb-G.wt)*.8;
+      GX.forEach(f=>{const x=f*W;
         c.fillStyle=`rgba(${PAPER},.97)`;c.beginPath();c.moveTo(x-gw/2-4,G.wb);c.lineTo(x-gw/2-4,G.wb-gh*.6);c.arc(x,G.wb-gh*.6,gw/2+4,Math.PI,0);c.lineTo(x+gw/2+4,G.wb);c.fill();
         c.strokeStyle=ink(.5);c.lineWidth=1;c.stroke();
-        c.fillStyle=ink(isOpen?.2:.84);c.beginPath();c.moveTo(x-gw/2,G.wb);c.lineTo(x-gw/2,G.wb-gh*.6);c.arc(x,G.wb-gh*.6,gw/2,Math.PI,0);c.lineTo(x+gw/2,G.wb);c.fill();
-        if(isOpen){const dg=c.createLinearGradient(0,G.wb-gh,0,G.wb);dg.addColorStop(0,ink(.25));dg.addColorStop(1,ink(.04));c.fillStyle=dg;c.fill();
-          c.fillStyle=ink(.78);c.fillRect(x-gw/2-gw*.14,G.wb-gh*.62,gw*.14,gh*.62);c.fillRect(x+gw/2,G.wb-gh*.62,gw*.14,gh*.62);
-          c.fillStyle=`rgba(${PAPER},.97)`;c.fillRect(x+gw*.55,G.wb+3,gw*.55,G.s*.26);c.strokeStyle=ink(.6);c.strokeRect(x+gw*.55,G.wb+3,gw*.55,G.s*.26);figure(c,x+gw*.9,G.wb+3,G.s*.92,TINTS[2],2);}
-        else{c.fillStyle=`rgba(${PAPER},.35)`;for(let k=0;k<3;k++)for(let j=0;j<2;j++){c.beginPath();c.arc(x-gw*.2+j*gw*.4,G.wb-gh*(.2+k*.2),1.6,0,7);c.fill();}
-          c.strokeStyle=`rgba(${PAPER},.3)`;c.beginPath();c.moveTo(x,G.wb-gh*.95);c.lineTo(x,G.wb);c.stroke();}});
+        c.fillStyle=ink(.2);c.beginPath();c.moveTo(x-gw/2,G.wb);c.lineTo(x-gw/2,G.wb-gh*.6);c.arc(x,G.wb-gh*.6,gw/2,Math.PI,0);c.lineTo(x+gw/2,G.wb);c.fill();
+        const dg=c.createLinearGradient(0,G.wb-gh,0,G.wb);dg.addColorStop(0,ink(.25));dg.addColorStop(1,ink(.04));c.fillStyle=dg;c.fill();
+        c.fillStyle=ink(.78);c.fillRect(x-gw/2-gw*.14,G.wb-gh*.62,gw*.14,gh*.62);c.fillRect(x+gw/2,G.wb-gh*.62,gw*.14,gh*.62);});
       /* 街面：土路、车辙、草 */
       const rg=c.createLinearGradient(0,G.wb,0,H);rg.addColorStop(0,'rgba(180,150,100,.1)');rg.addColorStop(1,'rgba(180,150,100,.2)');c.fillStyle=rg;c.fillRect(0,G.wb,W,H-G.wb);
       c.fillStyle=ink(.05);c.fillRect(0,G.wb,W,H*.012);
@@ -116,148 +116,138 @@ export const gateLevel={
     function sprites(){const G=geo();if(S.sprites&&S.sprites.s===G.s)return S.sprites;const dpr=Math.min(2,window.devicePixelRatio||1),out={s:G.s,img:[]};
       for(let t=0;t<4;t++)for(let v=0;v<3;v++){const cv=document.createElement('canvas');cv.width=Math.ceil(G.s*2.2*dpr);cv.height=Math.ceil(G.s*1.6*dpr);const x=cv.getContext('2d');x.scale(dpr,dpr);drawTraveler(x,t,G.s*1.1,G.s*1.5,G.s,v);out.img.push(cv);}
       return S.sprites=out;}
-    const typeOf=x=>S.round===3?(x.cls===0?(x.id%3===0?1:0):(x.id%2?2:3)):(x.id%7===0?2:x.id%5===0?3:x.id%3===0?1:0);
-    const spriteOf=x=>typeOf(x)*3+(x.id*7)%3;
+    const spriteOf=x=>(x.cls===0?(x.id%3===0?1:0):(x.id%2?2:3))*3+(x.id*7)%3;
 
-    /* ---------- 活的一天 ---------- */
-    function newDay(c,disc,seed){const r=RNG(seed);const cl=S.round===3?R3.classes:R1.classes,lam=S.round===3?R3.lambda:R1.lambda,T=S.round===3?R3.T:R1.T;
-      const cust=simulate(genArrivals(lam,T,cl,r),c,disc);cust.forEach((x,i)=>x.id=i);return{cust,c,disc,T,hist:[],gx:gatesX(c)};}
-    function layoutQ(){const G=geo(),per=Math.max(4,Math.floor(W*.8/(G.s*1.5))),bottom=H-(table&&table.offsetHeight?table.offsetHeight+10:0)-G.s*.5,rows=Math.max(2,Math.floor((bottom-G.front)/G.dy)+1);
+    /* ---------- 城门按钮（叠在门洞上） ---------- */
+    function layoutButtons(){
+      gbtns.innerHTML='';const G=geo(),gw=gateW(),gh=(G.wb-G.wt)*.8;
+      GX.forEach((f,i)=>{const b=el('button','gate-btn');b.style.left=(f*W-gw/2-8)+'px';b.style.top=(G.wb-gh-4)+'px';b.style.width=(gw+16)+'px';b.style.height=(gh+G.s*.6)+'px';
+        b.setAttribute('aria-label','第'+(i+1)+'道门');b.onclick=()=>toggle(i);b.appendChild(el('span','tag',''));gbtns.appendChild(b);});
+      updateButtons();
+    }
+    function updateButtons(){if(!S.sim)return;[...gbtns.children].forEach((b,i)=>{const g=S.sim.G[i];b.classList.toggle('open',g.open);b.querySelector('.tag').textContent=g.open?'关':'开';b.setAttribute('aria-pressed',g.open);});}
+    function toggle(i){
+      if(!S.sim||S.done)return;const g=S.sim.G[i],was=g.open,ok=S.sim.setOpen(i,!was);
+      if(ok){audio.tap(was?2:6);if(!S.running&&!S.done){/* 开城前也可以先排好门 */}}
+      else if(S.sim.forced){const b=gbtns.children[i];ui.flash('工时用尽',b.offsetLeft+b.offsetWidth/2,b.offsetTop);audio.low();}
+      updateButtons();
+    }
+
+    /* ---------- 速度与一米线 ---------- */
+    function buildCtl(){
+      ctl.innerHTML='';const pause=el('button','btn','暂停');pause.onclick=()=>{if(!S.running)return;S.paused=!S.paused;pause.textContent=S.paused?'继续':'暂停';pause.setAttribute('aria-pressed',S.paused);};ctl.appendChild(pause);S.pauseBtn=pause;
+      SPEEDS.forEach(v=>{const b=el('button','btn spd',v+'×');b.setAttribute('aria-pressed',v===S.speed);b.onclick=()=>{S.speed=v;ctl.querySelectorAll('.spd').forEach(x=>x.setAttribute('aria-pressed',x===b));if(S.paused&&S.running){S.paused=false;pause.textContent='暂停';pause.setAttribute('aria-pressed',false);}audio.tap(3+v);};ctl.appendChild(b);});
+      if(S.sc.canPool){const b=el('button','btn rope','拉一米线');b.setAttribute('aria-pressed',S.sim.pooled);b.onclick=()=>{if(S.done)return;S.sim.setPooled(!S.sim.pooled);b.setAttribute('aria-pressed',S.sim.pooled);b.textContent=S.sim.pooled?'撤一米线':'拉一米线';audio.paper();S.usedRope=S.usedRope||S.sim.pooled;};ctl.appendChild(b);}
+    }
+
+    /* ---------- 画面 ---------- */
+    function layoutQ(){const G=geo(),per=Math.max(4,Math.floor(W*.8/(G.s*1.5))),bottom=H-G.s*.6-(review?review.offsetHeight+8:0),rows=Math.max(2,Math.floor((bottom-G.front)/G.dy)+1);
       return{G,per,rows,colsPerLane:Math.max(3,Math.floor((bottom-G.front)/(G.dy*.85))+1)};}
-    function targets(t){
-      const D=S.day,Q=layoutQ(),G=Q.G,tg=new Map(),waiting=[];
-      for(const x of D.cust){if(x.t>t)break;if(x.start>t)waiting.push(x);else if(x.end>t)tg.set(x.id,{x:D.gx[x.gate],y:G.gy+G.s*.3,a:1});else if(t-x.end<.06)tg.set(x.id,{x:D.gx[x.gate],y:G.wb-G.s*.6,a:1-(t-x.end)/.06});}
-      if(D.disc==='separate'){const lanes=D.gx.map(()=>[]);waiting.forEach(x=>lanes[x.gate].push(x));const m=Q.colsPerLane;
-        lanes.forEach((L,g)=>L.forEach((x,k)=>{const col=Math.floor(k/m),row=k%m;tg.set(x.id,{x:D.gx[g]+(col?(col%2?1:-1)*G.s*1.1*Math.ceil(col/2):0),y:G.front+row*G.dy*.85,a:1});}));}
-      else{if(D.disc==='spt')waiting.sort((a,b)=>(a.cls-b.cls)||(a.t-b.t));
-        waiting.forEach((x,k)=>{const row=Math.floor(k/Q.per),col=k%Q.per;const off=(col-(Q.per-1)/2)*G.s*1.5*(row%2?-1:1);tg.set(x.id,{x:W/2+off,y:G.front+row*G.dy,a:row>=Q.rows?0:1});});}
-      return{tg,waiting,Q};
+    function targets(){
+      const sim=S.sim,Q=layoutQ(),G=Q.G,tg=new Map(),t=sim.t;
+      sim.G.forEach(g=>{if(g.cur)tg.set(g.cur.id,{x:GX[g.i]*W,y:G.gy+G.s*.3,a:1});});
+      for(let k=sim.served.length-1;k>=0;k--){const x=sim.served[k];if(t-x.end>.05)break;tg.set(x.id,{x:GX[x.gate]*W,y:G.wb-G.s*.5,a:Math.max(0,1-(t-x.end)/.05)});}
+      const snake=list=>list.forEach((x,k)=>{const row=Math.floor(k/Q.per),col=k%Q.per;const off=(col-(Q.per-1)/2)*G.s*1.5*(row%2?-1:1);tg.set(x.id,{x:W/2+off,y:G.front+row*G.dy,a:row>=Q.rows?0:1,w:1});});
+      if(sim.pooled)snake(sim.pool);
+      else{sim.G.forEach(g=>g.line.forEach((x,k)=>{const m=Q.colsPerLane,col=Math.floor(k/m),row=k%m;tg.set(x.id,{x:GX[g.i]*W+(col?(col%2?1:-1)*G.s*1.1*Math.ceil(col/2):0),y:G.front+row*G.dy*.85,a:1,w:1});}));snake(sim.pool);}
+      return{tg,Q};
     }
-    /* 一米线：蛇形长队的绳栏，只拉到有人排的那几行 */
-    function ropes(c,Q,n){const G=Q.G,used=Math.min(Q.rows,Math.ceil(n/Q.per)),half=(Q.per-1)/2*G.s*1.5+G.s*.9;if(used<1)return;
-      c.save();c.lineCap='round';
-      for(let r=0;r<used;r++){const y=G.front+(r+.5)*G.dy-G.s*.05,turnRight=r%2===0,x0=W/2-half,x1=W/2+half,gap=G.s*1.6;
-        const a=turnRight?x0:x0+gap,b=turnRight?x1-gap:x1;if(r<used-1||r===0){c.strokeStyle='rgba(179,38,30,.35)';c.lineWidth=1.2;c.beginPath();c.moveTo(a,y);c.quadraticCurveTo((a+b)/2,y+4,b,y);c.stroke();
-          c.fillStyle=`rgba(${INK},.7)`;[a,b].forEach(x=>{c.fillRect(x-1.2,y-G.s*.3,2.4,G.s*.34);});}}
+    function ropes(c,Q,n){const G=Q.G,used=Math.min(Q.rows,Math.ceil(n/Q.per)),half=(Q.per-1)/2*G.s*1.5+G.s*.9;if(used<1)return;c.save();c.lineCap='round';
+      for(let r=0;r<used;r++){const y=G.front+(r+.5)*G.dy-G.s*.05,turnRight=r%2===0,x0=W/2-half,x1=W/2+half,gap=G.s*1.6,a=turnRight?x0:x0+gap,b=turnRight?x1-gap:x1;
+        if(r<used-1||r===0){c.strokeStyle='rgba(179,38,30,.4)';c.lineWidth=1.3;c.beginPath();c.moveTo(a,y);c.quadraticCurveTo((a+b)/2,y+4,b,y);c.stroke();c.fillStyle=`rgba(${INK},.7)`;[a,b].forEach(x=>c.fillRect(x-1.2,y-G.s*.3,2.4,G.s*.34));}}
       c.restore();}
-    function drawDay(t,dt){
-      const D=S.day,c=fg.getContext('2d'),sp=sprites();c.setTransform(1,0,0,1,0,0);const dpr=fg.width/W;c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,W,H);
-      const {tg,waiting,Q}=targets(t),G=Q.G,k=Math.min(1,dt*7);
-      if(D.disc!=='separate')ropes(c,Q,waiting.length);
-      const list=[...tg.entries()].map(([id,p])=>{let cur=S.pos.get(id);if(!cur){cur={x:p.x+(Math.random()-.5)*20,y:H+G.s};S.pos.set(id,cur);}cur.x+=(p.x-cur.x)*k;cur.y+=(p.y-cur.y)*k;return{id,cur,a:p.a};});
+    function drawDoors(c){
+      const G=geo(),gw=gateW(),gh=(G.wb-G.wt)*.8,t=S.sim.t;
+      S.sim.G.forEach(g=>{const x=GX[g.i]*W,top=G.wb-gh;let open=g.open?(g.ready>t?1-(g.ready-t)/(1/60):1):0;if(!g.open&&g.cur)open=.6;
+        const pw=gw/2*(1-open*.85);
+        if(pw>1){c.fillStyle=`rgba(${INK},.86)`;c.save();c.beginPath();c.moveTo(x-gw/2,G.wb);c.lineTo(x-gw/2,G.wb-gh*.6);c.arc(x,G.wb-gh*.6,gw/2,Math.PI,0);c.lineTo(x+gw/2,G.wb);c.closePath();c.clip();
+          c.fillRect(x-gw/2,top,pw,gh);c.fillRect(x+gw/2-pw,top,pw,gh);c.fillStyle=`rgba(${PAPER},.4)`;
+          for(let k=0;k<3;k++)for(const sx of [x-gw/2+pw*.5,x+gw/2-pw*.5]){c.beginPath();c.arc(sx,G.wb-gh*(.22+k*.18),1.6,0,7);c.fill();}c.restore();}
+        if(g.open&&g.ready<=t){c.fillStyle=`rgba(${PAPER},.97)`;c.fillRect(x+gw*.55,G.wb+3,gw*.55,G.s*.26);c.strokeStyle=`rgba(${INK},.6)`;c.lineWidth=1;c.strokeRect(x+gw*.55,G.wb+3,gw*.55,G.s*.26);figure(c,x+gw*.9,G.wb+3,G.s*.92,TINTS[2],2);}
+      });
+    }
+    function drawFrame(dt){
+      const sim=S.sim,c=fg.getContext('2d'),sp=sprites(),dpr=fg.width/W;c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,W,H);
+      if(S.sc.night){const k=Math.min(1,sim.t/3.2),G=geo();c.fillStyle=`rgba(16,18,40,${.38*k})`;c.fillRect(0,0,W,H);
+        for(let i=0;i<9;i++){const x=W*(.06+i*.11),y=G.wt-geo().s*.2;c.save();c.globalCompositeOperation='lighter';const gl=c.createRadialGradient(x,y,1,x,y,G.s*1.4);gl.addColorStop(0,`rgba(255,170,80,${.5*k})`);gl.addColorStop(1,'rgba(255,170,80,0)');c.fillStyle=gl;c.fillRect(x-G.s*1.4,y-G.s*1.4,G.s*2.8,G.s*2.8);c.restore();
+          c.fillStyle=`rgba(205,56,38,${.25+.7*k})`;c.beginPath();c.ellipse(x,y,G.s*.22,G.s*.28,0,0,7);c.fill();}}
+      drawDoors(c);
+      const {tg,Q}=targets(),G=Q.G,k=Math.min(1,dt*7*Math.max(1,S.speed*.7));
+      if(sim.pooled)ropes(c,Q,sim.pool.length);
+      const list=[];for(const [id,p] of tg){let cur=S.pos.get(id);if(!cur){cur={x:p.x+(Math.random()-.5)*20,y:H+G.s};S.pos.set(id,cur);}cur.x+=(p.x-cur.x)*k;cur.y+=(p.y-cur.y)*k;list.push({id,cur,p});}
       for(const id of [...S.pos.keys()])if(!tg.has(id))S.pos.delete(id);
-      list.sort((a,b)=>a.cur.y-b.cur.y).forEach(({id,cur,a})=>{if(a<=0)return;const x=D.cust[id];c.globalAlpha=Math.min(1,a);c.drawImage(sp.img[spriteOf(x)],cur.x-G.s*1.1,cur.y-G.s*1.5,G.s*2.2,G.s*1.6);});
-      c.globalAlpha=1;
-      if(D.disc!=='separate'&&waiting.length>0){const shown=Math.min(waiting.length,Q.rows*Q.per);if(waiting.length>shown){const y=G.front+(Q.rows-.35)*G.dy;
-        c.font=`${Math.round(Math.max(14,G.s*.6))}px ${BRUSH_FONT}`;c.textAlign='center';c.textBaseline='middle';const txt=`后面还有 ${waiting.length-shown} 位`,tw=c.measureText(txt).width+18;
-        c.fillStyle='rgba(247,241,227,.9)';c.fillRect(W/2-tw/2,y-G.s*.4,tw,G.s*.8);c.fillStyle='rgba(179,38,30,.92)';c.fillText(txt,W/2,y);}}
-      return waiting.length;
+      list.sort((a,b)=>a.cur.y-b.cur.y);const t=sim.t;
+      for(const {id,cur,p} of list){if(p.a<=0)continue;const x=S.arr[id];c.globalAlpha=p.a;c.drawImage(sp.img[spriteOf(x)],cur.x-G.s*1.1,cur.y-G.s*1.5,G.s*2.2,G.s*1.6);c.globalAlpha=1;
+        if(p.w&&t-x.t>ANGRY){c.font=`${Math.round(G.s*.5)}px ${BRUSH_FONT}`;c.fillStyle='rgba(179,38,30,.95)';c.textAlign='center';c.fillText('怒',cur.x,cur.y-G.s*1.12);
+          if(!S.angry.has(id)){S.angry.add(id);if(S.running)audio.low();}}}
+      const n=sim.waiting(),shown=[...tg.values()].filter(p=>p.w&&p.a>0).length;
+      if(n>shown){const y=G.front+(Q.rows-.35)*G.dy;c.font=`${Math.round(Math.max(14,G.s*.6))}px ${BRUSH_FONT}`;c.textAlign='center';c.textBaseline='middle';const txt=`后面还有 ${n-shown} 位`,tw=c.measureText(txt).width+18;
+        c.fillStyle='rgba(247,241,227,.9)';c.fillRect(W/2-tw/2,y-G.s*.4,tw,G.s*.8);c.fillStyle='rgba(179,38,30,.92)';c.fillText(txt,W/2,y);c.textBaseline='alphabetic';}
     }
-    function hudUpdate(t,wq){
-      const D=S.day,started=D.cust.filter(x=>x.start<=t&&x.t<=t),ws=started.map(x=>(x.start-x.t)*60);
-      const oldest=D.cust.find(x=>x.t<=t&&x.start>t),maxNow=Math.max(ws.length?Math.max(...ws):0,oldest?(t-oldest.t)*60:0),avg=ws.length?ws.reduce((a,b)=>a+b,0)/ws.length:0;
-      const ci=Math.min(CLOCK.length-1,Math.floor(t));
-      hud.innerHTML=`<div class="gh-clock">${CLOCK[ci]}</div><div>候者 <b>${wq}</b> 人</div><div>平均候 <b>${avg.toFixed(1)}</b> 分</div><div>最久 <b>${maxNow.toFixed(0)}</b> 分</div>`;
-      hud.appendChild(spark);
-      D.hist.push([t,wq]);const sc=fitCanvas(spark,120,36);sc.clearRect(0,0,120,36);const mx=Math.max(10,...D.hist.map(h=>h[1]));
-      sc.strokeStyle='rgba(179,38,30,.85)';sc.lineWidth=1.4;sc.beginPath();D.hist.forEach(([tt,q],i)=>{const x=tt/D.T*118+1,y=34-q/mx*32;i?sc.lineTo(x,y):sc.moveTo(x,y);});sc.stroke();
-      return{avg,maxNow};
+    function hudUpdate(){
+      const sim=S.sim,sc=S.sc,cost=sim.costs(),T=dayLen(sc),ci=Math.min(sc.clock.length-1,Math.floor(sim.t)),n=sim.waiting();
+      const money=sc.budget?`<div>加班工时 剩 <b>${Math.max(0,sc.budget-cost.used).toFixed(1)}</b></div>`:`<div>工钱 <b>${Math.round(cost.wage)}</b> · 等候 <b>${Math.round(cost.wait)}</b></div>`;
+      hud.innerHTML=`<div class="gh-clock">${sc.clock[ci]}</div><div>候者 <b>${n}</b> · 最久 <b>${Math.round(sim.maxWaitNow())}</b> 分</div>${money}<div>告状 <b>${cost.angry}</b> · 合计 <b>${Math.round(cost.total)}</b> 文</div>`;
+      const cv=el('canvas','gh-fore');hud.appendChild(cv);const w=cv.clientWidth||150,h=44,x=fitCanvas(cv,w,h);const mx=Math.max(...sc.script,GATES*MU);
+      sc.script.forEach((l,i)=>{const bw=w/sc.script.length,bh=(h-12)*l/mx,cur=sim.t>=i*sc.slot&&sim.t<(i+1)*sc.slot;x.fillStyle=cur?'rgba(179,38,30,.85)':`rgba(${INK},${sim.t>(i+1)*sc.slot?.18:.42})`;x.fillRect(i*bw+1,h-10-bh,bw-2,bh);});
+      (sc.caravans||[]).forEach(([t0])=>{const xx=t0/T*w;x.fillStyle='rgba(170,128,72,.95)';x.font=`10px ${BRUSH_FONT}`;x.textAlign='center';x.fillText('驼',xx,9);});
+      const mxx=Math.min(1,sim.t/T)*w;x.strokeStyle='rgba(179,38,30,.9)';x.lineWidth=1.5;x.beginPath();x.moveTo(mxx,0);x.lineTo(mxx,h-10);x.stroke();
+      const cap=sim.openCount()*MU,cy=h-10-(h-12)*cap/mx;x.save();x.setLineDash([3,2]);x.strokeStyle='rgba(30,91,115,.95)';x.lineWidth=1.3;x.beginPath();x.moveTo(0,cy);x.lineTo(w,cy);x.stroke();x.restore();
+      x.fillStyle=`rgba(${INK},.6)`;x.font='9px serif';x.textAlign='left';x.fillText('来客预报',0,h-1);x.fillStyle='rgba(30,91,115,.95)';x.textAlign='right';x.fillText('虚线：每时能验 '+Math.round(cap),w,h-1);
+      S.maxQ=Math.max(S.maxQ,n);
     }
-    function play(onEnd){
-      cancelAnimationFrame(S.raf);S.playing=true;S.t=0;S.pos.clear();const D=S.day;let last=performance.now(),acc=0;
-      const secPerHour=()=>reduceMotion()?.3:(S.round===3?3:7)/S.speed;
-      const f=now=>{if(!root.isConnected||!S.playing)return;const dt=Math.min(.05,(now-last)/1000);last=now;S.t+=dt/secPerHour();const t=Math.min(S.t,D.T);
-        const wq=drawDay(t,dt);acc+=dt;if(acc>.12||t>=D.T){acc=0;hudUpdate(t,wq);}
-        if(t>=D.T){S.playing=false;onEnd&&onEnd();return;}S.raf=requestAnimationFrame(f);};
-      S.raf=requestAnimationFrame(f);
-    }
-    function buildLive(){
-      root.innerHTML='';bg=el('canvas','gate-bg');fg=el('canvas','gate-fg');hud=el('div','gate-hud');spark=el('canvas','gate-spark');ctl=el('div','gate-ctl');
-      [bg,fg,hud,ctl].forEach(e=>root.appendChild(e));drawScene();fitCanvas(fg,W,H);
-    }
-    function stepper(){
-      ctl.innerHTML='';if(S.round!==1)return;
-      const minus=el('button','btn','−'),plus=el('button','btn','＋'),v=el('b','',String(S.c));
-      minus.setAttribute('aria-label','少开一道门');plus.setAttribute('aria-label','多开一道门');
-      minus.onclick=()=>{if(S.playing||S.c<=1)return;S.c--;audio.tap(S.c);refresh1();};plus.onclick=()=>{if(S.playing||S.c>=6)return;S.c++;audio.tap(S.c+2);refresh1();};
-      ctl.appendChild(el('span','','开门'));ctl.appendChild(minus);ctl.appendChild(v);ctl.appendChild(plus);
-    }
-    function refresh1(){drawScene();stepper();S.day=newDay(S.c,'pooled',R1.seed);S.t=0;S.pos.clear();fitCanvas(fg,W,H);drawDay(0,0);hudUpdate(0,0);ui.meter(`<small>开门</small><b>${S.c}</b><small>道 · 每小时验 ${S.c*MU} 位</small>`);}
+    function loop(){cancelAnimationFrame(S.raf);let last=performance.now();
+      const f=now=>{if(!root.isConnected)return;const dt=Math.min(.05,(now-last)/1000);last=now;
+        if(S.running&&!S.paused&&!S.done){const sim=S.sim,T=dayLen(S.sc),tn=Math.min(T,sim.t+dt*(reduceMotion()?4:S.speed)/SEC_PER_HOUR);sim.advance(tn);
+          if(sim.forced&&!S.forcedSaid){S.forcedSaid=true;ui.say('加班工时用尽了，只剩一道门！');audio.low();}
+          while(S.lastRec<sim.t*60){S.lastRec++;S.series.push([sim.t,sim.waiting(),sim.openCount()]);}
+          S.hudAcc+=dt;if(S.hudAcc>.12){S.hudAcc=0;hudUpdate();updateButtons();}
+          if(tn>=T)endDay();}
+        drawFrame(dt);S.raf=requestAnimationFrame(f);};
+      S.raf=requestAnimationFrame(f);}
 
-    /* ---------- 第一回 ---------- */
-    function round1(){
-      S.round=1;S.c=4;S.speed=1;ui.hideResult();ui.stageName('第一回 · 开几道门');buildLive();refresh1();
-      ui.say(`清明时节，驼队、担夫、车马涌向汴京城门，每小时约来 <b>${R1.lambda}</b> 位；每道门查验一位约 5 分钟。<br>要让大家平均等候<b>不过一刻（15 分钟）</b>，门又开得越少越好。开几道？（每次开城，来的都是同一个上午的客人。）`);
-      ui.acts([['开城',run1,true]]);
+    /* ---------- 一天 ---------- */
+    function setupDay(n){
+      S.round=n;const sc=S.sc=ROUNDS[n-1];S.arr=genDay(sc,RNG(sc.seed));S.sim=createGateSim(sc,S.arr);for(let k=0;k<sc.open0;k++)S.sim.setOpen(OPEN_ORDER[k],true);
+      S.bench=S.bench&&S.bench.round===n?S.bench:Object.assign(bench(sc,S.arr),{round:n});
+      S.running=false;S.paused=true;S.done=false;S.pos.clear();S.series=[];S.lastRec=-1;S.angry.clear();S.maxQ=0;S.forcedSaid=false;S.usedRope=false;
+      if(review){review.remove();review=null;}
+      W=root.clientWidth;H=root.clientHeight;drawScene();fitCanvas(fg,W,H);layoutButtons();buildCtl();hudUpdate();ui.hideResult();
+      ui.stageName(['第一回 · ','第二回 · ','第三回 · '][n-1]+sc.nm);ui.meter('');
+      ui.acts([['开城',begin,true]]);ui.say(SAY[n]);
     }
-    function run1(){
-      if(S.playing)return;S.day=newDay(S.c,'pooled',R1.seed);S.speed=1;ui.hideResult();
-      ui.acts([['快进 ×3',()=>{S.speed=S.speed===1?3:1;},false],['收门重来',()=>{S.playing=false;refresh1();ui.acts([['开城',run1,true]]);}]]);
-      play(()=>{const s=waitStats(S.day.cust,0,S.day.T),g=r1Grade(S.c),cap=S.c*MU;audio.arp();
-        const line=S.c<=4?`${S.c} 道门每小时验 ${cap} 位，来的却有 ${R1.lambda} 位——差得不多，队伍却越排越长，永远排不完。`
-          :S.c===5?`每小时能验 ${cap} 位，比来客多出一成出头，队伍就稳住了。`:`稳妥，可多开了门：门吏的工钱，也是一笔账。`;
-        ui.result(g,`${S.c} 道门　·　平均候 <b>${s.avg.toFixed(1)}</b> 分　·　最久 <b>${s.max.toFixed(0)}</b> 分`,line,true);
-        ui.say(S.c<=4?'换几道门再开一天看看。':'门数定得好。下一回看看：来客越来越多时，等候会怎么变。');
-        ui.acts([['再开一天',()=>{ui.hideResult();ui.acts([['开城',run1,true]]);}],['下一回 →',round2,S.c>=5]]);});
+    function begin(){S.running=true;S.paused=false;if(S.pauseBtn){S.pauseBtn.textContent='暂停';S.pauseBtn.setAttribute('aria-pressed',false);}audio.bell();ui.acts([['收门重来',()=>setupDay(S.round)]]);}
+    function endDay(){
+      const sim=S.sim;S.done=true;sim.finish();S.series.push([sim.t,0,0]);hudUpdate();updateButtons();
+      const c=sim.costs(),b=S.bench.cost,ratio=c.total/Math.max(1,b.total),g=gradeRatio(ratio,S.sc.grades);audio.arp();
+      const parts=S.sc.budget?`等候 ${Math.round(c.wait)} · 告状 ${c.angry}`:`工钱 ${Math.round(c.wage)} · 等候 ${Math.round(c.wait)} · 告状 ${c.angry}`;
+      let line;
+      if(g==='至妙')line=ratio<1?'比老门官还省！人潮前开门，人潮后收门，一步不差。':'和老门官不相上下：人潮前开门，人潮后收门。';
+      else if(S.sc.canPool&&!S.usedRope)line='驼队堵住一道门，别的门却闲着，后来的人还插了队。拉起一米线，大家排成一条长队，哪道门空了去哪道。';
+      else if(S.sc.budget&&c.forced)line='工时在人潮之前就用光了。人少时一道门就够，工时要留给戌时的灯会。';
+      else if(c.wage>b.wage*1.25&&!S.sc.budget)line='门开得太多：人少的时候，门吏闲着也要工钱。';
+      else line='人潮来了才开门，队伍已经排长了——队伍一长，要很久才消得下去。看着预报，早一步开门。';
+      ui.result(g,`你花 <b>${Math.round(c.total)}</b> 文（${parts}） · 老门官 <b>${Math.round(b.total)}</b> 文`,line,true);
+      showReview();
+      const L=[['再守一天',()=>setupDay(S.round)]];L.push(S.round<3?['下一回 →',()=>setupDay(S.round+1),true]:['题跋 · 钤印',()=>ui.colophon(),true]);ui.acts(L);
+      ui.say(S.round===1?'复盘图：红线是你，墨线是老门官。看看人潮前后，你们的门数差在哪里。':S.round===2?'一条长队：谁也不会被后来的人插队，最久的等候也短得多。':'人手有限时，把它留给最挤的时辰。这一处参透了。');
     }
-    /* ---------- 第二回：推演百日 ---------- */
-    let chart,slider,big;
-    function round2(){
-      S.round=2;S.playing=false;cancelAnimationFrame(S.raf);ui.hideResult();ui.stageName('第二回 · 逼近满载');ui.meter('');S.lab={tries:new Map(),curve:false,lam:40};
-      root.innerHTML='';const wrap=el('div','hm-lab'),panel=el('div','hm-panel'),rule=el('div','hm-rule');
-      rule.innerHTML=`<div>五道门，每小时最多验 60 位。每小时来客 <b id="gLam">${S.lab.lam}</b> 位，城门忙碌 <b id="gRho">${Math.round(S.lab.lam/60*100)}%</b> 的时间。</div><input type="range" id="gSlider" min="${R2.lamMin}" max="${R2.lamMax}" value="${S.lab.lam}" aria-label="每小时来客">`;
-      big=el('div','hm-big','推演百日（城门日夜不闭），看平均等候。');chart=el('div','hm-chart gate-chart');chart.appendChild(el('canvas'));
-      panel.appendChild(rule);panel.appendChild(big);wrap.appendChild(panel);wrap.appendChild(chart);root.appendChild(wrap);
-      slider=rule.querySelector('input');slider.oninput=()=>{S.lab.lam=+slider.value;rule.querySelector('#gLam').textContent=S.lab.lam;rule.querySelector('#gRho').textContent=Math.round(S.lab.lam/60*100)+'%';draw2();};
-      ui.say('来客越多，城门越忙。忙到几成，队伍会失控？拖动滑杆，点<b>推演百日</b>，多试几个。');acts2();draw2();
+    function showReview(){
+      review=el('div','gate-review');const cv=el('canvas');review.appendChild(cv);review.appendChild(el('div','gr-leg','<span class="me">— 你</span><span class="old">┄ 老门官</span><span>上：候者　下：开门数</span>'));root.appendChild(review);
+      requestAnimationFrame(()=>{const w=review.clientWidth-16,h=Math.min(150,Math.max(110,H*.22));const c=fitCanvas(cv,w,h),T=dayLen(S.sc),me=S.series,old=S.bench.series;
+        const qmax=Math.max(5,...me.map(p=>p[1]),...old.map(p=>p[1])),X=t=>6+(w-12)*Math.min(1,t/T),top=h*.62;
+        c.strokeStyle=`rgba(${INK},.15)`;c.beginPath();c.moveTo(6,top);c.lineTo(w-6,top);c.moveTo(6,h-4);c.lineTo(w-6,h-4);c.stroke();
+        const line=(pts,f,col,dash)=>{c.save();c.setLineDash(dash);c.strokeStyle=col;c.lineWidth=1.6;c.beginPath();pts.forEach((p,i)=>{const x=X(p[0]),y=f(p);i?c.lineTo(x,y):c.moveTo(x,y);});c.stroke();c.restore();};
+        line(old,p=>top-4-(top-10)*p[1]/qmax,`rgba(${INK},.7)`,[4,3]);line(me,p=>top-4-(top-10)*p[1]/qmax,'rgba(179,38,30,.9)',[]);
+        const gy=p=>h-5-(h-top-10)*p[2]/GATES;line(old,gy,`rgba(${INK},.7)`,[4,3]);line(me,gy,'rgba(179,38,30,.9)',[]);
+        c.fillStyle=`rgba(${INK},.55)`;c.font='10px serif';c.textAlign='left';c.fillText('候者 '+qmax,8,11);c.fillText('门 6',8,top+11);
+        S.sc.clock.forEach((l,i)=>{if(i%2)return;c.textAlign='center';c.fillText(l,X(i),top+1);});
+        layoutQ();});
     }
-    function acts2(){const L=[['推演百日',()=>{const w=labRun(S.lab.lam,Math.random);S.lab.tries.set(S.lab.lam,w);audio.tap(4);
-        big.innerHTML=`每小时来 ${S.lab.lam} 位：平均候 <b>${w.toFixed(1)}</b> 分`;draw2();acts2();
-        if(S.lab.tries.size===3&&!S.lab.curve)ui.say('再往满载那头试试。也可以看看理论曲线。');},true]];
-      if(S.lab.tries.size>=3&&!S.lab.curve)L.push(['看理论曲线',()=>{S.lab.curve=true;audio.gliss();draw2();acts2();
-        ui.say('墨线是排队论算出的等候（Erlang C 公式）。忙到九成还算平缓，过了九成半就直往上窜。<br>要平均候不过一刻，五道门最多接得住每小时多少位？把滑杆停在答案上。');}]);
-      if(S.lab.tries.size>=1)L.push(['就定这个数',settle2]);ui.acts(L);}
-    function draw2(){
-      const cv=chart.querySelector('canvas'),pts=[...S.lab.tries.entries()].map(([l,w])=>({x:l/60,y:w,l:w.toFixed(0)+'分'}));
-      const curve=S.lab.curve?Array.from({length:120},(_,i)=>{const l=R2.lamMin+(R2.lamMax+1.5-R2.lamMin)*i/119;return[l/60,wqMMc(l,MU,5)*60];}):null;
-      labChart(cv,chart.clientWidth,chart.clientHeight,{xmin:.5,xmax:1,ymin:0,ymax:40,xticks:[.5,.6,.7,.8,.9,1].map(v=>({v,l:Math.round(v*100)+'%'})),yticks:[0,10,20,30,40].map(v=>({v,l:v+'分'})),
-        xlabel:'城门忙碌的时间（利用率）',ylabel:'平均等候',threshold:{y:15,l:'一刻'},points:pts,curve,cursor:S.lab.lam/60});
-    }
-    function settle2(){const m=r2MaxLambda(),g=r2Grade(S.lab.lam);audio.arp();if(!S.lab.curve){S.lab.curve=true;draw2();}
-      ui.result(g,`你的答案：每小时 <b>${S.lab.lam}</b> 位　·　最多接得住 <b>${m}</b> 位（忙碌 ${Math.round(m/60*100)}%）`,
-        g==='至妙'?`再多来一位（${m+1}），平均候就从 ${(wqMMc(m,MU,5)*60).toFixed(0)} 分涨到 ${(wqMMc(m+1,MU,5)*60).toFixed(0)} 分。越逼近满载，等候越是陡涨。`:S.lab.lam>m?'这个数接不住：平均候超过了一刻。':'还接得住更多，只是余量留得宽了些。');
-      ui.say('五道门忙到九成三还能稳住，是因为五道门共用一条长队。下一回就看看这条长队。');ui.acts([['再试试',()=>{ui.hideResult();acts2();}],['下一回 →',round3,true]]);}
-    /* ---------- 第三回：怎么排队 ---------- */
-    function round3(){
-      S.round=3;ui.hideResult();ui.stageName('第三回 · 怎么排队');ui.meter('');S.arrSeen={};
-      buildLive();tabs=el('div','gate-tabs');table=el('div','gate-table');root.appendChild(tabs);root.appendChild(table);
-      Object.entries(ARR).forEach(([k,nm])=>{const b=el('button','btn'+(k===S.disc?' on':''),nm);b.onclick=()=>{S.disc=k;show3();};tabs.appendChild(b);});
-      if(!S.r3){const r=RNG(2026),acc={separate:{},pooled:{},spt:{}};for(let d=0;d<120;d++){const arr=genArrivals(R3.lambda,R3.T,R3.classes,r);for(const k in acc){const s=r3Stats(arr,k);for(const f in s)acc[k][f]=(acc[k][f]||0)+s[f]/120;}}S.r3=acc;}
-      ui.say(`只开四道门，每小时来 ${R3.lambda} 位：七成是担夫行人（查验约 3 分钟），三成是驼队车马（约 10 分钟）。<br>点上面三种排法，看看这一上午的城门口。`);
-      S.disc='separate';show3();
-    }
-    function show3(){
-      tabs.querySelectorAll('.btn').forEach((b,i)=>b.classList.toggle('on',Object.keys(ARR)[i]===S.disc));
-      S.day=newDay(R3.c,S.disc,31337);S.arrSeen[S.disc]=1;S.speed=1;ui.hideResult();drawTable();
-      play(()=>{ui.say(`「${ARR[S.disc]}」看完了。三种都看看，再定下一种。`);});
-      ui.acts([['定下「'+ARR[S.disc]+'」',settle3,true]]);
-    }
-    function drawTable(){
-      const rows=Object.keys(ARR).filter(k=>S.arrSeen[k]);
-      table.innerHTML=`<table><thead><tr><th>推演百日</th><th>平均候</th><th>最久候</th><th>被后来者抢先</th><th>担夫行人</th><th>驼队车马</th></tr></thead><tbody>${rows.map(k=>{const a=S.r3[k];
-        return`<tr class="${k===S.disc?'cur':''}"><th>${ARR[k]}</th><td>${a.avg.toFixed(1)} 分</td><td>${a.max.toFixed(0)} 分</td><td>${Math.round(a.over*100)}%</td><td>${a.fast.toFixed(1)} 分</td><td>${a.slow.toFixed(1)} 分</td></tr>`;}).join('')}</tbody></table>`;
-    }
-    function settle3(){S.playing=false;const g=r3Grade(S.disc),a=S.r3;audio.arp();drawTable();
-      const line={separate:`各排各队：有的门闲着，有的队却很长。三成多的人被后来者抢先，最久要等 ${a.separate.max.toFixed(0)} 分钟。`,
-        pooled:`一条长队、哪门空了去哪门：平均更短，最久候减半，没有人被插队。银行和机场的一米线，就是这个道理。`,
-        spt:`快者先行：平均最短，担夫几乎不用等；可驼队要多等 ${(a.spt.slow-a.pooled.slow).toFixed(0)} 分钟，还有人被插队。效率和公平，要你来权衡。`}[S.disc];
-      ui.result(g,`定下「${ARR[S.disc]}」　·　平均候 <b>${a[S.disc].avg.toFixed(1)}</b> 分`,line,true);
-      ui.say(S.disc==='separate'?'换一种排法试试？':'这一处参透了。');
-      ui.acts(S.disc==='separate'?[['再看看',()=>{ui.hideResult();show3();}]]:[['再看看',()=>{ui.hideResult();show3();}],['题跋 · 钤印',()=>ui.colophon(),true]]);}
-
-    this._resize=()=>{if(S.round===2){draw2();return;}drawScene();fitCanvas(fg,W,H);if(S.day)drawDay(Math.min(S.t,S.day.T),1);};
-    this._stop=()=>{S.playing=false;cancelAnimationFrame(S.raf);};
-    round1();
+    this._resize=()=>{if(!S.sim)return;W=root.clientWidth;H=root.clientHeight;drawScene();fitCanvas(fg,W,H);layoutButtons();};
+    this._stop=()=>{S.running=false;cancelAnimationFrame(S.raf);};
+    gateLevel._dbg=S;gateLevel._go=n=>setupDay(n);   /* 自动化测试用 */
+    setupDay(1);loop();
   },
   resize(){this._resize&&this._resize();},
   stop(){this._stop&&this._stop();this._resize=null;}

@@ -1,29 +1,39 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ORDERS,orderKey,raceWins,matchWon,counterOf,HABIT,LEDGER20,habitSample,habitWinProb,kingPredict,kingMirror,R3_MATCHES} from '../src/levels/race-core.js';
+import {maxWins,bestAssign,countWins,sameRankWins,sunbinPick,onlineSolver,R1,R2,R3,gradeR2,gradeR3,runTime} from '../src/levels/race-core.js';
 import {RNG} from '../src/core/rng.js';
 
-test('齐王无论怎么排，田忌都恰好只有一种排法能赢，就是孙膑之策', ()=>{
-  for(const k of ORDERS){const wins=ORDERS.filter(t=>matchWon(t,k));assert.equal(wins.length,1);assert.deepEqual(wins[0],counterOf(k));assert.equal(raceWins(counterOf(k),k),2);}
-  assert.deepEqual(counterOf([3,2,1]),[1,3,2]);   // 下驷对上驷，上驷对中驷，中驷对下驷
+function brute(mine,opp){let best=0;const a=[...mine];const perm=k=>{if(k===a.length){best=Math.max(best,a.reduce((s,v,i)=>s+(v>opp[i]?1:0),0));return;}
+  for(let i=k;i<a.length;i++){[a[k],a[i]]=[a[i],a[k]];perm(k+1);[a[k],a[i]]=[a[i],a[k]];}};perm(0);return best;}
+
+test('明牌最多能赢几场：与穷举一致，给出的排法确实赢这么多', ()=>{
+  const r=RNG(3);for(let t=0;t<2000;t++){const n=2+Math.floor(r()*5),m=[],o=[];for(let i=0;i<n;i++){m.push(1+Math.floor(r()*11));o.push(1+Math.floor(r()*11));}
+    const w=maxWins(m,o);assert.equal(w,brute(m,o));const lanes=bestAssign(m,o);assert.equal(new Set(lanes).size,n);assert.equal(countWins(m,o,lanes),w);}
 });
-test('同等的马对上（镜像），田忌三场全输', ()=>{for(const t of ORDERS)assert.equal(raceWins(t,kingMirror(t)),0);});
-test('出马簿与习惯一致：二十场里上中下出了九次', ()=>{
-  const c={};LEDGER20.forEach(k=>c[k]=(c[k]||0)+1);assert.equal(LEDGER20.length,20);assert.equal(c['321'],9);
-  for(const k in c)assert.ok(c[k]<=c['321']);
+test('第一回：同等相对三场皆负，孙膑的次序两胜一负', ()=>{
+  assert.equal(sameRankWins(R1.mine,R1.king),0);assert.equal(maxWins(R1.mine,R1.king),2);
+  assert.equal(countWins(R1.mine,R1.king,[2,0,1]),2);
 });
-test('第二回：照着习惯出「下上中」最好，每局赢面 45%，且是唯一最好', ()=>{
-  const ps=ORDERS.map(t=>habitWinProb(t)),best=Math.max(...ps);assert.ok(Math.abs(best-.45)<1e-9);
-  assert.equal(ps.filter(p=>Math.abs(p-best)<1e-9).length,1);assert.equal(orderKey(ORDERS[ps.indexOf(best)]),'132');
-  const r=RNG(3);let w=0;for(let i=0;i<40000;i++)if(matchWon([1,3,2],habitSample(r)))w++;assert.ok(Math.abs(w/40000-.45)<.01);
+test('第二回：三位诸侯的马都更强，同等相对只能赢零到一场，排得好能赢过半', ()=>{
+  for(const c of R2){const sm=c.mine.reduce((a,b)=>a+b,0),so=c.opp.reduce((a,b)=>a+b,0);assert.ok(sm<so,c.nm);
+    assert.ok(sameRankWins(c.mine,c.opp)<=1,c.nm);assert.ok(maxWins(c.mine,c.opp)>c.opp.length/2,c.nm);}
+  assert.deepEqual(R2.map(c=>maxWins(c.mine,c.opp)),[3,3,4]);
 });
-function play(policy,rnd){const hist=[];let hits=0,wins=0;
-  for(let m=0;m<R3_MATCHES;m++){const pred=kingPredict(hist,rnd),mine=policy(hist,rnd);if(orderKey(pred)===orderKey(mine))hits++;if(matchWon(mine,kingMirror(pred)))wins++;hist.push(mine);}
-  return{hits,wins};}
-test('第三回：乱出（均匀随机）时，齐王只猜中约六分之一，你也只赢约六分之一', ()=>{
-  const r=RNG(8),N=20000;let h=0,w=0;for(let i=0;i<N;i++){const x=play((_,rn)=>ORDERS[Math.floor(rn()*6)],r);h+=x.hits;w+=x.wins;}
-  assert.ok(Math.abs(h/(N*R3_MATCHES)-1/6)<.01,'hits '+h/(N*R3_MATCHES));assert.ok(Math.abs(w/(N*R3_MATCHES)-1/6)<.01,'wins '+w/(N*R3_MATCHES));
+test('暗盘：「能赢用刚好赢的，赢不了派最弱的」每一步都是妙手（与精确解一致）', ()=>{
+  const r=RNG(9);const sets=R3.map(c=>[c.mine,c.opp]);for(let t=0;t<120;t++){const m=[],o=[];for(let i=0;i<5;i++){m.push(1+Math.floor(r()*11));o.push(1+Math.floor(r()*11));}sets.push([m,o]);}
+  for(const [m,o] of sets){const S=onlineSolver(m,o),n=m.length,seen=new Set();
+    const walk=(mm,om)=>{if(!om||seen.has(mm*4096+om))return;seen.add(mm*4096+om);
+      for(let j=0;j<n;j++)if(om>>j&1){const avail=[];for(let i=0;i<n;i++)if(mm>>i&1)avail.push(i);const g=sunbinPick(m,avail,o[j]);assert.ok(S.isBest(mm,om,j,g));avail.forEach(i=>walk(mm&~(1<<i),om&~(1<<j)));}};
+    walk(S.full,S.full);}
 });
-test('第三回：总出同一种，第二局起次次被猜中，最多第一局侥幸赢一局', ()=>{
-  const r=RNG(9);for(let i=0;i<500;i++){const x=play(()=>[1,3,2],r);assert.ok(x.hits>=R3_MATCHES-1);assert.ok(x.wins<=1);}
+test('暗盘三位诸侯：按规矩走，期望赢过半；乱派的期望赢得少得多', ()=>{
+  for(const c of R3){const S=onlineSolver(c.mine,c.opp),best=S.V(S.full,S.full);assert.ok(best>=2.5,c.nm+' '+best);
+    // 乱派：每场随手派一匹
+    const n=5;let rnd=0;const r=RNG(4);for(let k=0;k<4000;k++){const order=[...Array(n).keys()].sort(()=>r()-.5),mine=[...Array(n).keys()].sort(()=>r()-.5);rnd+=order.reduce((s,j,i)=>s+(c.mine[mine[i]]>c.opp[j]?1:0),0);}
+    assert.ok(rnd/4000<best-.8,c.nm+' random '+rnd/4000+' vs '+best);}
+});
+test('评级与跑马时间', ()=>{
+  assert.equal(gradeR2(10,10),'至妙');assert.equal(gradeR2(8,10),'上品');assert.equal(gradeR2(3,10),'下品');
+  assert.equal(gradeR3(15,15),'至妙');assert.equal(gradeR3(12,15),'上品');
+  assert.ok(runTime(9,true)<runTime(8,false));assert.ok(runTime(5,true)<runTime(5,false));
 });

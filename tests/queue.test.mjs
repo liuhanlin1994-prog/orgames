@@ -1,36 +1,44 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {erlangC,wqMMc,genArrivals,simulate,waitStats,R1,R2,R3,MU,r2MaxLambda,labRun,r3Stats,r1Grade} from '../src/levels/queue-core.js';
+import {erlangC,lqMMc,wqMMc,MU,GATES,ROUNDS,dayLen,genDay,createGateSim,runPolicy,bench,policyExpert,gradeRatio} from '../src/levels/queue-core.js';
 import {RNG} from '../src/core/rng.js';
 
-test('Erlang C 公式', ()=>{assert.ok(Math.abs(erlangC(1,.7)-.7)<1e-12);assert.ok(Math.abs(erlangC(2,1)-1/3)<1e-12);assert.equal(wqMMc(60,12,5),Infinity);});
-test('先来先过、多门时，每位来客都在最早空出来的门查验', ()=>{
-  const r=RNG(2),cu=simulate(genArrivals(40,3,[{p:1,mean:5}],r),4,'pooled');
-  for(const x of cu){assert.ok(x.start>=x.t-1e-12);assert.ok(Math.abs(x.end-x.start-x.s)<1e-12);}
-  const byGate={};cu.forEach(x=>(byGate[x.gate]=byGate[x.gate]||[]).push(x));
+const day=sc=>genDay(sc,RNG(sc.seed));
+const statik=c=>()=>c;
+
+test('Erlang C 公式', ()=>{assert.ok(Math.abs(erlangC(1,.7)-.7)<1e-12);assert.ok(Math.abs(erlangC(2,1)-1/3)<1e-12);assert.equal(lqMMc(60,12,5),Infinity);assert.ok(wqMMc(40,12,4)>0);});
+
+test('城门口模拟：先来先验、一门一次只验一人、等候折钱等于人人等候之和、关城后全部验完', ()=>{
+  const sc=ROUNDS[0],arr=day(sc),sim=createGateSim(sc,arr.map(a=>({...a})));sim.setCount(3);
+  // 中途开关几次门
+  const T=dayLen(sc);for(let t=0;t<T;t+=.05){sim.advance(t);if(Math.abs(t-1.5)<.03)sim.setCount(5);if(Math.abs(t-4.5)<.03)sim.setCount(2);}
+  sim.advance(T);sim.finish();
+  assert.equal(sim.served.length,arr.length);
+  const byStart=[...sim.served].sort((a,b)=>a.start-b.start);for(let i=1;i<byStart.length;i++)assert.ok(byStart[i].t>=byStart[i-1].t-1e-12,'FIFO');
+  const byGate={};sim.served.forEach(x=>(byGate[x.gate]=byGate[x.gate]||[]).push(x));
   for(const g in byGate){const L=byGate[g].sort((a,b)=>a.start-b.start);for(let i=1;i<L.length;i++)assert.ok(L[i].start>=L[i-1].end-1e-12);}
+  for(const x of sim.served){assert.ok(x.start>=x.t-1e-12);assert.ok(Math.abs(x.end-x.start-x.s)<1e-9);}
+  const sumWait=sim.served.reduce((s,x)=>s+(x.start-x.t),0)*sc.CW;assert.ok(Math.abs(sumWait-sim.costs().wait)<1e-6*Math.max(1,sumWait));
 });
-function dayAvg(c,N,r){let a=0;for(let d=0;d<N;d++)a+=waitStats(simulate(genArrivals(R1.lambda,R1.T,R1.classes,r),c,'pooled'),0,R1.T).avg;return a/N;}
-test('第一回：四道门（每小时验 48、来 56）平均等候远超一刻；五道门在一刻以内', ()=>{
-  const r=RNG(4);const a4=dayAvg(4,300,r),a5=dayAvg(5,300,r),a6=dayAvg(6,300,r);
-  assert.ok(a4>2*R1.target,'4:'+a4);assert.ok(a5<R1.target/1.5,'5:'+a5);assert.ok(a6<a5);
-  assert.equal(r1Grade(5),'至妙');assert.equal(r1Grade(4),'下品');
+
+test('第一回：老门官（看预报开门、队长加门）明显胜过全天六门或四门', ()=>{
+  const sc=ROUNDS[0];let b=0,s6=0,s5=0,s4=0;
+  for(let k=0;k<25;k++){const arr=genDay(sc,RNG(100+k));b+=bench(sc,arr).cost.total;s6+=runPolicy(sc,arr,statik(6)).cost.total;s5+=runPolicy(sc,arr,statik(5)).cost.total;s4+=runPolicy(sc,arr,statik(4)).cost.total;}
+  assert.ok(s6>1.2*b,`6门 ${s6} vs ${b}`);assert.ok(s5>1.25*b,`5门 ${s5}`);assert.ok(s4>1.6*b,`4门 ${s4}`);
+  const arr=day(sc),r=bench(sc,arr).cost.total;assert.equal(gradeRatio(r/r),'至妙');assert.equal(gradeRatio(runPolicy(sc,arr,statik(6)).cost.total/r)!=='至妙',true);
 });
-test('第一回用的那个上午（固定 seed）很典型：同一串来客，门越多越短；四门远超一刻、五门在一刻以内', ()=>{
-  const arr=genArrivals(R1.lambda,R1.T,R1.classes,RNG(R1.seed)),avg=c=>waitStats(simulate(arr,c,'pooled'),0,R1.T).avg;
-  const a=[1,2,3,4,5,6].map(avg);for(let i=1;i<a.length;i++)assert.ok(a[i]<=a[i-1]);
-  assert.ok(a[3]>2*R1.target,'4:'+a[3]);assert.ok(a[4]<R1.target/2,'5:'+a[4]);
-  const typ=dayAvg(4,300,RNG(8));assert.ok(Math.abs(a[3]-typ)/typ<.15,'4 门与平均的差 '+a[3]+' vs '+typ);
+
+test('第二回：驼队结伴排在一道门后，各门各排比一条长队多花不少；拉起一米线立刻见效', ()=>{
+  const sc=ROUNDS[1];let pooled=0,sep=0,maxP=0,maxS=0;
+  for(let k=0;k<25;k++){const arr=genDay(sc,RNG(200+k)),pol=policyExpert(sc,sc.W);
+    const a=runPolicy(sc,arr,pol,{pooled:true}),c=runPolicy(sc,arr,pol,{pooled:false});pooled+=a.cost.total;sep+=c.cost.total;}
+  assert.ok(sep>1.12*pooled,`各排 ${sep} vs 一队 ${pooled}`);
 });
-test('第二回：推演百日与公式吻合；五道门、平均候不过一刻，最多接得住每小时 56 位', ()=>{
-  assert.equal(r2MaxLambda(),56);
-  const r=RNG(6);for(const l of [45,50,54,56,57]){const f=wqMMc(l,MU,R2.c)*60,s=labRun(l,r);assert.ok(Math.abs(s-f)/f<.25,`${l}: sim ${s} formula ${f}`);}
-  assert.ok(wqMMc(56,MU,5)*60<=15&&wqMMc(57,MU,5)*60>15);
+
+test('第三回：老门官守得住工时限额；一开城就把六门全开，工时在灯会前耗尽，民怨翻倍不止', ()=>{
+  const sc=ROUNDS[2],arr=day(sc),b=bench(sc,arr);assert.ok(b.cost.used<=sc.budget+1e-9);
+  const early=runPolicy(sc,arr,statik(6));assert.ok(early.cost.forced);assert.ok(early.cost.total>3*b.cost.total,`${early.cost.total} vs ${b.cost.total}`);
+  const four=runPolicy(sc,arr,statik(Math.round(sc.budget/dayLen(sc))+1));assert.ok(four.cost.total>1.5*b.cost.total);
 });
-test('第三回：一条长队比各门各排平均更短、最久候少一半以上、无人被抢先；快者先行平均最短但驼队多等', ()=>{
-  const r=RNG(5),N=200,acc={separate:{},pooled:{},spt:{}};
-  for(let d=0;d<N;d++){const arr=genArrivals(R3.lambda,R3.T,R3.classes,r);for(const k in acc){const s=r3Stats(arr,k);for(const f in s)acc[k][f]=(acc[k][f]||0)+s[f]/N;}}
-  assert.ok(acc.pooled.avg<acc.separate.avg);assert.ok(acc.pooled.max<acc.separate.max*.5);
-  assert.equal(acc.pooled.over,0);assert.ok(acc.separate.over>.25);
-  assert.ok(acc.spt.avg<acc.pooled.avg);assert.ok(acc.spt.slow>acc.pooled.slow);assert.ok(acc.spt.fast<acc.pooled.fast/2);
-});
+
+test('评级', ()=>{assert.equal(gradeRatio(1.02),'至妙');assert.equal(gradeRatio(1.1),'上品');assert.equal(gradeRatio(1.3),'中品');assert.equal(gradeRatio(2),'下品');assert.equal(GATES,6);assert.ok(MU>10&&MU<12);});
