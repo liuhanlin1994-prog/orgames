@@ -320,19 +320,21 @@ button.rcard:hover{transform:translateY(-2px)}
 /* ---------- 序章 ---------- */
 #intro{position:absolute;inset:0;z-index:48;background:#0c0905;transition:opacity .7s}
 #intro.out{opacity:0}
-#intro canvas{position:absolute;inset:0;width:100%;height:100%}
+#introCv{position:absolute;inset:0;width:100%;height:100%}
 .itxt{position:absolute;right:max(16px,7vw);top:12vh;height:66vh;writing-mode:vertical-rl;display:flex;flex-direction:column;gap:18px;align-items:flex-start;color:var(--ink);transition:opacity .6s,color 1.2s}
 .itxt.light{color:#efe2c4;text-shadow:0 0 12px rgba(0,0,0,.6)}
 .itxt.fade{opacity:0}
-.itxt .icol{font-family:var(--brush);font-size:clamp(19px,3.3vh,28px);line-height:1.7;letter-spacing:.2em;max-height:66vh}
+.itxt:not(.light){height:48vh}.itxt:not(.light) .icol{max-height:48vh}   /* 天亮后字写短一点，不压远山 */
+.itxt .icol{font-family:var(--brush);font-size:clamp(16px,min(3.3vh,4.8vw),28px);line-height:1.7;letter-spacing:.2em;max-height:66vh}
 .itxt .isrc{font-family:var(--brush);font-size:clamp(14px,2.1vh,17px);letter-spacing:.2em;opacity:0;animation:liIn 1s ease forwards;align-self:flex-end;color:inherit;filter:none}
 #introTitle{position:absolute;left:50%;top:10vh;transform:translateX(-50%);writing-mode:vertical-rl;display:flex;flex-direction:column;align-items:flex-start;gap:clamp(16px,3vw,30px);pointer-events:none}
-#introTitle .it1{font-family:var(--brush);font-size:clamp(64px,13vh,132px);line-height:1;letter-spacing:.06em;color:var(--ink)}
+#introTitle .it1{font-family:var(--brush);font-size:clamp(56px,min(13vh,24vw),132px);line-height:1;letter-spacing:.06em;color:var(--ink)}
 #introTitle .it2{font-family:var(--brush);font-size:clamp(28px,5vh,50px);letter-spacing:.2em;color:var(--ink);margin-top:clamp(80px,22vh,260px)}
-#introTitle .iseal{width:clamp(48px,8vh,74px);height:clamp(48px,8vh,74px);align-self:flex-end;opacity:0;transform:scale(2.4) rotate(-14deg)}
+#introTitle .iseal{display:inline-block;vertical-align:middle;margin-top:.6em;width:clamp(44px,7vh,68px);height:clamp(44px,7vh,68px);opacity:0;transform:scale(2.4) rotate(-14deg)}
 #introTitle.sealed .iseal{opacity:1;transform:scale(1) rotate(-5deg);transition:transform .38s cubic-bezier(.3,1.6,.5,1),opacity .12s}
 #introSkip{position:absolute;right:16px;top:calc(12px + env(safe-area-inset-top,0px));z-index:3;background:rgba(247,241,227,.14);color:#efe2c4;border-color:rgba(239,226,196,.4)}
 #introSkip:hover{background:rgba(247,241,227,.28)}
+@media (max-aspect-ratio:4/5){#introTitle{left:40%}}
 
 /* ---------- 卷终 ---------- */
 #app.cine #hud,#app.cine #hint{opacity:0;pointer-events:none;transition:opacity .8s}
@@ -347,6 +349,8 @@ button.rcard:hover{transform:translateY(-2px)}
 #finaleText .fseal{width:76px;height:76px;align-self:flex-end;opacity:0;transform:scale(2.6) rotate(-14deg)}
 #finale.sealed .fseal{opacity:1;transform:scale(1) rotate(-5deg);transition:transform .4s cubic-bezier(.3,1.6,.5,1),opacity .12s}
 #finaleActs{display:flex;gap:10px}
+@media (max-width:560px){#finale{padding:0 10px;justify-content:center}#finale .fin-in{padding:16px 10px;gap:14px}#finaleText{gap:6px;height:min(440px,58vh);max-width:calc(100vw - 40px)}
+  #finaleText p{font-size:16px;letter-spacing:.1em;line-height:1.5}#finaleText p.fh{font-size:20px}#finaleText p.fs{font-size:12px}#finaleText .fseal{width:52px;height:52px}}
 #finaleActs[hidden]{display:none!important}
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

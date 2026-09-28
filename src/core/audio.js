@@ -158,7 +158,7 @@ export function createAudio(){
     } else if(S.bass){pluck(t0,degHz(root),.2*S.bass*q,{bright:.3,dur:3.8});}
     // 分解和弦
     const pat=ARPS[S.arp][barInChord];
-    if(S.gliss&&barIdx%8===0&&barInChord===0){for(let i=0;i<9;i++)pluck(t0-.36+i*.04,degHz(root+i+2),.07+i*.012,{bright:.75,dur:1.8,pan:.15});}
+    if(S.gliss&&barIdx%8===0&&barInChord===0){for(let i=0;i<9;i++)pluck(Math.max(.001,t0-.36+i*.04),degHz(root+i+2),.07+i*.012,{bright:.75,dur:1.8,pan:.15});}
     pat.forEach((dg,i)=>{if(dg==null)return;const acc=[1,.6,.78,.6,.9,.6,.78,.6][i];const jitter=(rnd()-.5)*.016;
       pluck(t0+i*BEAT/2+jitter,degHz(root+5+dg),(.19*acc+.02*rnd())*q*(S.melody?.85:1),{bright:.66,pan:(i%2?.18:-.18)});});
     if(S.harm&&rnd()<.5)harmonic(t0+BEAT*(2+Math.floor(rnd()*2))+BEAT/2,degHz(root+10+(rnd()<.5?3:5)),.06*q);

@@ -23,7 +23,7 @@ export const innLevel={
     let W=0,H=0,bg,fg,raf=0,people=[];
     /* 版式：宽屏四桌一排；窄屏两排 */
     const T=()=>{const wide=W/H>1.2,s=wide?Math.max(30,Math.min(H*.19,W*.068,124)):Math.max(30,Math.min(H*.15,W*.17,124)),wallB=H*(wide?.56:.5),beam=H*.05;
-      const tables=wide?[.4,.545,.69,.835].map(f=>({x:f*W,y:H*.9})):[[.52,.74],[.82,.74],[.46,.94],[.78,.94]].map(([a,b])=>({x:a*W,y:b*H}));
+      const tables=wide?[.4,.545,.69,.835].map(f=>({x:f*W,y:H*.9})):[[.55,.74],[.83,.74],[.5,.94],[.8,.94]].map(([a,b])=>({x:a*W,y:b*H}));
       const door={x:wide?W*.93:W*.87,w:s*1.15,top:wallB-s*1.8},kx0=W*.02,kbot=H*(wide?.92:.95);
       return{wide,s,wallB,beam,tables,door,counter:{x0:kx0,x1:kx0+s*(wide?2.6:1.6),top:kbot-s*.62,bot:kbot},
         wins:wide?[[.31,.44],[.57,.7]]:[[.24,.5]],scroll:wide?.505:.62,posts:wide?[.27,.75]:[.18]};};

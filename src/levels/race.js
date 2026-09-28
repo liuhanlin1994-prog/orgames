@@ -42,7 +42,7 @@ export const raceLevel={
       c.lineWidth=Math.max(1,cs*.1);for(let x=cs*.8;x<W;x+=cs*1.7){c.beginPath();c.moveTo(x,crowdY-cs*.4);c.lineTo(x,crowdY+3);c.stroke();}
       c.fillStyle='rgba(165,42,32,.75)';c.fillRect(kx-cs*1.5,crowdY-cs*1.4,cs*.14,cs*1.42);c.fillRect(kx+cs*1.36,crowdY-cs*1.4,cs*.14,cs*1.42);
       roof(c,kx,crowdY-cs*1.38,cs*3.6,cs*.55,.88);figure(c,kx,crowdY-cs*.02,cs*1.15,'rgba(165,42,32,.62)',2,'rgba(200,160,70,.95)');
-      banner(c,kx+cs*2.1,crowdY-2,Math.max(12,H*.05),'齐');banner(c,W*.56,crowdY-2,Math.max(12,H*.05),'田');
+      banner(c,kx+cs*2.1,crowdY-2,Math.max(12,H*.05),'齐');banner(c,W/2+Math.min(34,H*.1)*1.5+24,crowdY-2,Math.max(12,H*.05),'田');   /* 田字旗让开「第几场」的标题框 */
       [.58,.92].forEach(f=>{c.strokeStyle=`rgba(${INK},.28)`;c.beginPath();c.moveTo(0,H*f);c.lineTo(W,H*f);c.stroke();});
       c.strokeStyle=`rgba(${INK},.12)`;c.setLineDash([4,6]);c.beginPath();c.moveTo(0,H*.75);c.lineTo(W,H*.75);c.stroke();c.setLineDash([]);
       const sx=W-sizeOf()*1.1-4;c.strokeStyle=`rgba(${INK},.3)`;c.setLineDash([2,5]);c.beginPath();c.moveTo(sx,H*.36);c.lineTo(sx,H*.96);c.stroke();c.setLineDash([]);

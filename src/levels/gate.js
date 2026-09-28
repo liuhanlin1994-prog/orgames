@@ -65,7 +65,7 @@ export const gateLevel={
 
     /* ---------- 城门与街面 ---------- */
     function gatesX(c){const all=[.14,.29,.43,.57,.71,.86];const pick=[2,3,1,4,0,5].slice(0,c).sort((a,b)=>a-b);return pick.map(i=>all[i]*W);}
-    function geo(){const wt=H*.19,wb=H*.36;return{wt,wb,gy:wb+H*.045,front:wb+H*.14,dy:Math.max(20,H*.062),s:Math.max(16,Math.min(38,H*.062,W*.045))};}
+    function geo(){const wt=H*.19,wb=H*.36,s=Math.max(16,Math.min(38,H*.062,W*.07));return{wt,wb,gy:wb+H*.045,front:wb+H*.14,dy:Math.max(20,Math.min(H*.062,s*1.9)),s};}
     function drawScene(){
       W=root.clientWidth;H=root.clientHeight;const c=fitCanvas(bg,W,H),G=geo(),r=RNG(3),ink=a=>`rgba(${INK},${a})`;paperBase(c,0,0,W,H);
       /* 远山 */

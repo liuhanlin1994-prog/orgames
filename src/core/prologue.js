@@ -27,7 +27,7 @@ export function playPrologue({audio,onDone}){
   /* ---------- 几何 ---------- */
   function layout(){
     W=innerWidth;H=innerHeight;ctx=fitCanvas(cv,W,H);
-    const portrait=W<H*.8,cx=portrait?W*.42:W*.42,cy=portrait?H*.56:H*.6,Lr=Math.min(W*(portrait?.2:.11),H*.15),wr=Lr*.085,gap=wr*3.4;
+    const portrait=W<H*.8,cx=portrait?W*.56:W*.42,cy=portrait?H*.56:H*.6,Lr=Math.min(W*(portrait?.2:.11),H*.15),wr=Lr*.085,gap=wr*3.4;
     const tx=cx-Lr*.85,ux=cx+Lr*.5,yA=cy-Lr*1.05,yB=cy+Lr*.6,yC=cy-Lr*.15,len=Lr*.8;
     const H_=(x,y)=>({x,y,a:0,len}),V_=(x,y)=>({x,y,a:Math.PI/2,len});
     const hs=(n,x,y)=>Array.from({length:n},(_,k)=>H_(x,y+(k-(n-1)/2)*gap));
@@ -43,10 +43,15 @@ export function playPrologue({audio,onDone}){
     // 天亮时再撒下十四根，凑成二十段山脊
     const r=RNG(5),extra=[];for(let i=0;i<14;i++)extra.push({x:cx+(r()-.5)*Lr*4.6,y:cy+(r()-.3)*Lr*2.4,a:r()*Math.PI,len:len*(.8+r()*.2)});
     // 远山：用笔墨引擎画好，山脊取自同一套山形
-    const base=H*(portrait?.78:.8),hh=H*(portrait?.26:.34);
+    /* 两重山：远山淡、连绵；近山两头高、中间低，给书名留出一道山谷 */
+    const base=H*(portrait?.8:.82),hh=H*(portrait?.28:.38);
+    const P=(x,h,wl,wr,k,round,seed)=>({x:W*x,h:hh*h,wl:W*wl,wr:W*wr,k,round,seed});
     cfg={base,a:.72,c:1,cun:.9,lw:2.2,trees:.9,dot:1.1,peaks:[
-      {x:W*.1,h:hh*.55,wl:W*.14,wr:W*.12,k:1.6,seed:901},{x:W*.3,h:hh*.82,wl:W*.13,wr:W*.1,k:1.9,seed:902},{x:W*.46,h:hh,wl:W*.1,wr:W*.12,k:2,seed:903},
-      {x:W*.64,h:hh*.7,wl:W*.12,wr:W*.13,k:1.7,seed:904},{x:W*.86,h:hh*.62,wl:W*.13,wr:W*.14,k:1.6,seed:905}]};
+      P(.02,.55,.1,.09,1.4,.04,901),P(.14,.95,.1,.09,1.6,.02,902),P(.27,.62,.09,.1,1.4,.04,903),
+      P(.42,.2,.1,.08,1.2,.08,904),P(.57,.16,.08,.1,1.2,.08,905),
+      P(.72,.7,.1,.09,1.5,.03,906),P(.85,portrait?.72:1,.09,.1,1.6,.02,907),P(.98,.58,.1,.1,1.4,.04,908)]};
+    const far={base:base-H*.035,a:.3,c:.9,cun:.5,lw:1.6,trees:0,dot:.7,peaks:[
+      P(.1,.5,.15,.14,1.3,.06,911),P(.3,.38,.15,.15,1.3,.06,912),P(.52,.28,.16,.15,1.3,.06,913),P(.72,.42,.15,.15,1.3,.06,914),P(.92,.5,.14,.15,1.3,.06,915)]};
     cfg.peaks.forEach(p=>delete p._sil);
     const N=20,xs=Array.from({length:N+1},(_,i)=>W*(.03+.94*i/N)),ridge=xs.map(x=>[x,Math.min(base-4,massifTopAt(cfg,x))]);
     const live=rods.filter(q=>!q.fade).map(q=>({src:q.merge,rod:q})).concat(extra.map(e=>({src:e,extra:e})));
@@ -55,6 +60,8 @@ export function playPrologue({audio,onDone}){
       if(o.rod)o.rod.ridge=o.tgt,o.rod.ri=i;else o.extra.ridge=o.tgt,o.extra.ri=i;});
     // 离屏画好山
     mtn=document.createElement('canvas');const mc=fitCanvas(mtn,W,H);
+    [...far.peaks].sort((a,b)=>b.h-a.h).forEach(p=>drawPeak(mc,p,far,false));
+    mistBand(mc,0,W,far.base-H*.01,H*.05,.6,32);
     [...cfg.peaks].sort((a,b)=>b.h-a.h).forEach(p=>drawPeak(mc,p,cfg,false));
     mistBand(mc,0,W,base+6,H*.05,.9,31);
     G={portrait,cx,cy,Lr,wr,tx,ux,yA,yB,yC,rods,extra,len};
@@ -88,7 +95,7 @@ export function playPrologue({audio,onDone}){
   function darkScene(t,al){
     if(al<=0)return;ctx.save();ctx.globalAlpha=al;
     ctx.fillStyle='#120d08';ctx.fillRect(0,0,W,H);
-    const fx=W*(G.portrait?.14:.16),fy=H*.46,fl=noise(t*3)*.25+noise(t*7.3)*.12;
+    const fx=W*(G.portrait?.1:.16),fy=H*.46,fl=noise(t*3)*.25+noise(t*7.3)*.12;
     const glow=ctx.createRadialGradient(fx,fy,4,fx,fy,Math.max(W,H)*.7);glow.addColorStop(0,`rgba(255,196,120,${.34+fl*.2})`);glow.addColorStop(.35,'rgba(160,96,40,.12)');glow.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);
     ctx.strokeStyle='rgba(210,160,100,.06)';ctx.lineWidth=2;for(let i=0;i<14;i++){const x=W*(i+.5)/14;ctx.beginPath();ctx.moveTo(x,0);ctx.bezierCurveTo(x+18,H*.2,x-14,H*.4,x+6,H*.44);ctx.stroke();}
@@ -132,7 +139,7 @@ export function playPrologue({audio,onDone}){
   }
   function showTitle(){
     title.innerHTML='';const t1=el('div','it1'),t2=el('div','it2');const d=writeChars(t1,'千里江山',0,reduceMotion()?0:260);writeChars(t2,'运筹录',d+200,reduceMotion()?0:220);
-    title.appendChild(t1);title.appendChild(t2);const sc=el('canvas','iseal');sc.width=sc.height=140;sealCanvas(sc,'运筹帷幄');title.appendChild(sc);
+    title.appendChild(t1);title.appendChild(t2);const sc=el('canvas','iseal');sc.width=sc.height=140;sealCanvas(sc,'运筹帷幄');t2.appendChild(sc);   /* 印钤在「运筹录」之后 */
   }
 
   /* ---------- 时间线 ---------- */
