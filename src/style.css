@@ -456,9 +456,6 @@ button.hc:hover{transform:translateY(-2px);box-shadow:0 4px 10px -4px rgba(40,25
 .au-lot b{font-family:var(--brush);font-weight:400;font-size:26px;color:var(--ink);letter-spacing:.1em;line-height:1.1}
 .au-lot .eye{font-size:13px;color:var(--ink-2)}.au-lot .eye.sharp{color:var(--malachite,#2e6e50)}.au-lot .eye.blur{color:var(--cinnabar)}
 .au-lot .rc-incense{margin:4px 0 0}
-.au-price{position:absolute;z-index:3;display:flex;white-space:nowrap;align-items:baseline;gap:4px;background:rgba(40,30,20,.86);color:#f3e6c8;padding:4px 10px;border-radius:2px;transform:translateX(-10%)}
-.au-price b{font-family:var(--brush);font-weight:400;font-size:34px;color:#ffd27a;min-width:2.2em;text-align:right;font-variant-numeric:tabular-nums}
-.au-price small{font-size:12px}
 .au-name{position:absolute;z-index:2;transform:translate(-50%,-100%);font-family:var(--brush);font-size:15px;color:var(--ink-2);white-space:nowrap;background:rgba(247,241,227,.7);padding:0 4px}
 .au-ledger{position:absolute;right:10px;top:10px;z-index:3;background:rgba(247,241,227,.88);border:1px solid rgba(60,50,30,.22);padding:6px 10px;font-size:13px;min-width:150px}
 .au-ledger .lt{font-family:var(--brush);font-size:17px;color:var(--ink);margin-bottom:2px}.au-ledger .lt small{font-family:sans-serif;font-size:11px;color:var(--ink-3);margin-left:4px}
@@ -470,33 +467,18 @@ button.hc:hover{transform:translateY(-2px);box-shadow:0 4px 10px -4px rgba(40,25
 .au-rhint{position:absolute;left:12px;top:4px;font-size:13px;color:var(--ink-2);pointer-events:none;z-index:1}.au-rhint b{font-family:var(--brush);font-weight:400;font-size:19px;color:var(--cinnabar)}
 .au-ruler{position:absolute;left:0;right:0;top:22px;bottom:0;width:100%;height:calc(100% - 22px);display:block;touch-action:none;cursor:pointer}
 .au-ruler:focus-visible{outline:2px solid rgba(30,91,115,.5);outline-offset:-2px}
-@media (max-width:640px){.au-lot{padding:4px 8px 6px;min-width:0}.au-lot b{font-size:20px}.au-ledger{font-size:11.5px;min-width:0;padding:4px 7px}.au-ledger .lt{font-size:14px}.au-name{font-size:12px}.au-price b{font-size:26px}.au-rwrap{height:156px}}
-/* 撒豆：方田、舆图、账、喇叭口 */
-.bn{position:absolute;inset:0}
-.bn-map{position:absolute;box-shadow:0 10px 24px -14px rgba(40,25,5,.55)}
-.bn-map canvas{position:absolute;inset:0;width:100%;height:100%}
-.bn-map canvas:last-child{touch-action:none;cursor:crosshair}
-.bn-panel{position:absolute;display:flex;flex-direction:column;gap:8px;min-height:0}
-.bn-stats{background:rgba(247,241,227,.85);border:1px solid rgba(60,50,30,.22);padding:8px 12px;display:flex;flex-direction:column;gap:4px;font-size:13.5px;color:var(--ink-2)}
-.bn-stats .big{display:flex;align-items:baseline;gap:6px}.bn-stats .big small{font-size:13px;color:var(--ink-3)}
-.bn-stats .big b{font-family:var(--brush);font-weight:400;font-size:40px;line-height:1.05;color:var(--cinnabar);font-variant-numeric:tabular-nums}
-.bn-stats .row{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}.bn-stats .row b{font-variant-numeric:tabular-nums;color:var(--ink)}
-.bn-stats .row b.ok{color:var(--malachite)}.bn-stats .row b.bad,.bn-stats .ledger b.bad{color:var(--cinnabar)}.bn-stats .row b.gold{color:#9a6a1a;font-size:15px}
-.bn-stats .sm,.bn-note .sm{font-size:12px;color:var(--ink-3)}
-.bn-stats .ledger{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;border-top:1px dashed rgba(60,50,30,.2);padding-top:4px}.bn-stats .ledger:empty{display:none}
-.bn-chart{flex:1;min-height:110px;width:100%;background:rgba(247,241,227,.7);border:1px solid rgba(60,50,30,.18)}
-.bn-note{font-size:13px;color:var(--ink-2);line-height:1.6}.bn-note b{color:var(--cinnabar)}
-@media (max-width:640px){.bn-stats{padding:6px 10px;font-size:12.5px;gap:2px}.bn-stats .big b{font-size:30px}.bn-chart{min-height:90px}.bn-note{font-size:12px}}
-/* 窑火：龙窑、火候尺 */
-.kn{position:absolute;inset:0;display:flex;flex-direction:column}
-.kn-scene{position:relative;flex:1;min-height:120px;overflow:hidden}
-.kn-scene>canvas{position:absolute;inset:0;width:100%;height:100%}
-.kn-info{position:absolute;left:12px;top:10px;z-index:2;display:flex;flex-direction:column;gap:4px;background:rgba(247,241,227,.85);border:1px solid rgba(60,50,30,.2);padding:6px 12px 8px}
-.kn-kilns{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-3)}
-.kn-kilns i{display:inline-block;width:14px;height:12px;border-radius:7px 7px 2px 2px;background:#c0602c;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2)}
-.kn-kilns i.used{background:rgba(60,50,30,.18);box-shadow:none}
-.kn-w{font-size:14px;color:var(--ink-2);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.kn-w b{font-family:var(--brush);font-weight:400;font-size:28px;color:var(--cinnabar)}.kn-w small{font-size:12px;color:var(--ink-3)}
-.kn-rwrap{position:relative;flex:none;height:clamp(210px,40%,300px);border-top:1px solid rgba(60,50,30,.2);background:rgba(247,241,227,.78)}
-.kn-ruler{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
-.kn-ruler:focus-visible{outline:2px solid rgba(30,91,115,.5);outline-offset:-2px}
-@media (max-width:640px){.kn-rwrap{height:clamp(220px,50%,360px)}.kn-w b{font-size:22px}.kn-info{padding:4px 8px 6px}}
+@media (max-width:640px){.au-lot{padding:4px 8px 6px;min-width:0}.au-lot b{font-size:20px}.au-ledger{font-size:11.5px;min-width:0;padding:4px 7px}.au-ledger .lt{font-size:14px}.au-name{font-size:12px}.au-rwrap{height:156px}}
+/* 断桥：江心诸洲、桥、粮路 */
+.br{position:absolute;inset:0;overflow:hidden}
+.br>canvas{position:absolute;inset:0;width:100%;height:100%}
+.br>canvas:nth-of-type(2){touch-action:none;cursor:pointer}
+.br-hud{position:absolute;left:10px;top:8px;z-index:2;display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap;background:rgba(247,241,227,.88);border:1px solid rgba(60,50,30,.22);padding:4px 12px;max-width:calc(100% - 20px)}
+.br-hud .big{display:flex;align-items:baseline;gap:5px}.br-hud .big small{font-size:13px;color:var(--ink-3)}
+.br-hud .big b{font-family:var(--brush);font-weight:400;font-size:32px;line-height:1.1;color:var(--cinnabar);font-variant-numeric:tabular-nums}
+.br-hud .goal{font-size:13px;color:var(--ink-2)}
+.br-hud .st{font-size:14px;font-weight:600}.br-hud .st.ok{color:var(--malachite)}.br-hud .st.bad{color:var(--cinnabar)}
+.br-chips{position:absolute;right:10px;top:8px;z-index:2;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:50%}
+.br-chips .chip{display:inline-flex;align-items:center;gap:5px;background:rgba(247,241,227,.92);border:1.5px solid;border-radius:14px;padding:2px 4px 2px 8px;font-size:13px}
+.br-chips .chip i{width:9px;height:9px;border-radius:50%}
+.br-chips .chip button{border:0;background:none;cursor:pointer;font-size:13px;color:var(--ink-3);padding:2px 5px}.br-chips .chip button:hover{color:var(--cinnabar)}
+@media (max-width:640px){.br-hud .big b{font-size:24px}.br-hud{padding:3px 8px;gap:2px 10px}.br-chips{top:auto;bottom:8px;max-width:calc(100% - 20px)}}

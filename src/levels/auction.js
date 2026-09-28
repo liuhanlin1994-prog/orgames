@@ -3,15 +3,15 @@
 import {RNG} from '../core/rng.js';
 import {INK,PAPER,BRUSH_FONT,paperBase,paperGrain,roof,house,figure,fitCanvas} from '../core/ink.js';
 import {el,reduceMotion} from '../core/ui.js';
-import {NAMES,R1,R2,LOTS3,sealed,aiBid,startOf,expert,runSealed,vickrey,payoffAt,truthful,gradeProfit} from './auction-core.js';
+import {NAMES,R1,R2,sealed,expert,runSealed,vickrey,payoffAt,truthful,gradeProfit} from './auction-core.js';
 
 const ink=a=>`rgba(${INK},${a})`,RED='rgba(179,38,30,.92)',BLUE='rgba(30,91,115,.9)',GOLD='rgba(200,160,70,.95)',GREEN='rgba(46,110,80,.9)';
 const LOOK=[null,['rgba(150,60,40,.34)',1],['rgba(60,80,100,.3)',2],['rgba(120,90,50,.32)',1],['rgba(40,70,60,.32)',2]];
-const SHORT=['你','赵','钱','孙','李'],TITLE=['第一回 · 落价','第二回 · 暗标','第三回 · 只付次高价'];
-const INTRO=['大相国寺斗宝。这回是<b>落价</b>：价码从高处一路往下落，谁先喊「要了」，宝物就按那个价归谁。你只凭眼力估个数——真值多半在你估价上下 30 贯之内。',
-  '改投<b>暗标</b>：各人写个价封进信封，价高者得、照自己写的付。有的宝物<b>一眼看得准</b>（上下 15 贯），有的<b>看不准</b>（上下 45 贯）。在尺上点一下出价，再封标。',
-  '最后一场换了规矩：<b>价高者得，但只付第二高的价</b>。这回各人心里的价不同——这几件对你值多少，你自己清楚（金线）。在尺上点一下出价，再封标。'];
-const DUTCH_MS=70,BID_SECS=12,AUTO_MS=5200;
+const SHORT=['你','赵','钱','孙','李'],TITLE={2:'第一回 · 暗标',3:'第二回 · 只付次高价'};
+/* 回合编号沿用 2（暗标）、3（次高价）：2 是共同价值，3 是各人心里的价 */
+const INTRO={2:'大相国寺斗宝。宝物的真值谁也不知道，各人只凭眼力估个数（蓝框：真值多半在这一段）。这回投<b>暗标</b>：写个价封进信封，价高者得、照自己写的付。有的宝物<b>看得准</b>（上下 15 贯），有的<b>看不准</b>（上下 45 贯）。在尺上点一下出价，再封标。',
+  3:'换个规矩：<b>价高者得，但只付第二高的价</b>。这回各人心里的价不同——这几件对你值多少，你自己清楚（金线）。在尺上点一下出价，再封标。'};
+const BID_SECS=10,AUTO_MS=3800;
 
 /* ---------- 宝物的画法：(x,y) 为底部中点，s 为高 ---------- */
 function drawWare(c,nm,x,y,K){
@@ -62,14 +62,14 @@ function drawWare(c,nm,x,y,K){
 export const auctionLevel={
   id:'auction',title:'斗宝',concept:'拍卖 · 赢者诅咒',ambience:'market',poem:['五花马','千金裘','呼儿将出换美酒'],poemSrc:'李白《将进酒》',
   colophon:{head:'拍卖 · 赢者诅咒',seal:'虚实',
-    lines:['宝物的真值谁也不知道，各人只凭眼力估个数；估得最高的，往往估错最多。','落价与暗标本是一回事：心里定下的那个价，就是该喊「要了」的时候。越看不准，压得越低。','只付第二高的价，出价只决定得不得标、不决定付多少：照心里的真价出，最不吃亏。'],
+    lines:['宝物的真值谁也不知道，各人只凭眼力估个数；估得最高的，往往估错最多，得标反亏（赢者诅咒）。','所以出价要比估价压低一截；越看不准，压得越多。','只付第二高的价，出价只决定得不得标、不决定付多少：照心里的真价出，最不吃亏。'],
     note:'今之油田开采权、无线电频谱竞拍，都要提防赢者诅咒；网上的广告位竞价，多用「次高价」规则。'},
   start(ui,audio){
-    const S={round:1,lots:R1,k:-1,lot:R1[0],phase:'ready',price:0,maxAI:0,bid:null,res:null,showV:false,raised:[0,0,0,0,0],tot:[0,0,0,0,0],wins:[0,0,0,0,0],truth:0,hist:[],timer:0,autoT:0,vT:0,t0:0};
-    const root=el('div','au'),scene=el('div','au-scene'),bg=el('canvas'),fg=el('canvas'),lotEl=el('div','au-lot'),priceEl=el('div','au-price'),ledger=el('div','au-ledger'),rev=el('canvas','au-review');
+    const S={round:2,lots:R1,k:-1,lot:R1[0],phase:'ready',bid:null,res:null,showV:false,raised:[0,0,0,0,0],tot:[0,0,0,0,0],wins:[0,0,0,0,0],truth:0,hist:[],timer:0,autoT:0,vT:0,t0:0};
+    const root=el('div','au'),scene=el('div','au-scene'),bg=el('canvas'),fg=el('canvas'),lotEl=el('div','au-lot'),ledger=el('div','au-ledger'),rev=el('canvas','au-review');
     const rwrap=el('div','au-rwrap'),rhint=el('div','au-rhint'),rcv=el('canvas','au-ruler');rcv.tabIndex=0;rcv.setAttribute('aria-label','出价尺：左右键调整出价，回车封标');
-    [bg,fg,lotEl,priceEl,ledger,rev].forEach(e=>scene.appendChild(e));rwrap.appendChild(rhint);rwrap.appendChild(rcv);root.appendChild(scene);root.appendChild(rwrap);ui.stage.appendChild(root);
-    const names=[1,2,3,4].map(i=>{const d=el('div','au-name',NAMES[i]);scene.appendChild(d);return d;});rev.hidden=true;priceEl.hidden=true;
+    [bg,fg,lotEl,ledger,rev].forEach(e=>scene.appendChild(e));rwrap.appendChild(rhint);rwrap.appendChild(rcv);root.appendChild(scene);root.appendChild(rwrap);ui.stage.appendChild(root);
+    const names=[1,2,3,4].map(i=>{const d=el('div','au-name',NAMES[i]);scene.appendChild(d);return d;});rev.hidden=true;
     let W=0,H=0,G=null;
 
     /* ---------- 大相国寺：远处殿宇、摊棚、宝案、牙人、四位买家 ---------- */
@@ -86,8 +86,7 @@ export const auctionLevel={
       for(let i=0;i<50;i++){const x=r()*W,y=H*.84+r()*H*.16;c.strokeStyle=ink(.05);c.beginPath();c.moveTo(x,y);c.lineTo(x+10+r()*20,y);c.stroke();}
       paperGrain(c,0,0,W,H,false);
       names.forEach((d,i)=>{d.style.left=G.bid[i]+'px';d.style.top=(G.by-G.fs*1.08)+'px';});
-      if(G.narrow){priceEl.style.left='auto';priceEl.style.right='10px';priceEl.style.transform='none';priceEl.style.top=(ledger.offsetTop+ledger.offsetHeight+8)+'px';}
-      else{priceEl.style.right='auto';priceEl.style.transform='';priceEl.style.left=(G.yx+G.fs*.3)+'px';priceEl.style.top=(G.ty-G.fs*1.25)+'px';}}
+      }
     function drawFg(){const c=fitCanvas(fg,W,H);c.clearRect(0,0,W,H);if(!G)return;const L=S.lot;
       drawWare(c,L.nm,G.tx-G.tw*.08,G.ty,G.ware);
       [1,2,3,4].forEach(i=>{const x=G.bid[i-1],y=G.by,s=G.fs,[tint,hat]=LOOK[i],won=S.res&&S.res.win===i;
@@ -109,12 +108,10 @@ export const auctionLevel={
       if(S.round<3){const e=L.est[0],a=X(e-L.sig),b=X(e+L.sig);c.fillStyle='rgba(30,91,115,.13)';c.fillRect(a,ax-22,b-a,26);c.strokeStyle='rgba(30,91,115,.5)';c.strokeRect(a,ax-22,b-a,26);
         c.strokeStyle=BLUE;c.lineWidth=2;c.beginPath();c.moveTo(X(e),ax-22);c.lineTo(X(e),ax+4);c.stroke();c.fillStyle=BLUE;c.textAlign='center';c.fillText(`你估 ${e}`,X(e),ax-31);}
       else{const x=X(L.v);c.strokeStyle=GOLD;c.lineWidth=3;c.beginPath();c.moveTo(x,ax-24);c.lineTo(x,ax+6);c.stroke();c.fillStyle='rgba(150,110,30,1)';c.textAlign='center';c.fillText(`对你值 ${L.v}`,x,ax-33);}
-      /* 落价的价码 */
-      if(S.round===1&&S.phase==='live'){const x=X(S.price);c.strokeStyle=RED;c.lineWidth=2;c.beginPath();c.moveTo(x,6);c.lineTo(x,h-6);c.stroke();c.fillStyle=RED;c.beginPath();c.moveTo(x-6,4);c.lineTo(x+6,4);c.lineTo(x,12);c.closePath();c.fill();}
       /* 你的出价 */
       const my=S.res?S.res.bids[0]:S.bid;
       if(my!=null&&my>=0){const x=X(my);c.fillStyle=BLUE;c.beginPath();c.moveTo(x,ax-2);c.lineTo(x-7,ax-14);c.lineTo(x+7,ax-14);c.closePath();c.fill();
-        c.fillStyle=`rgba(${PAPER},.95)`;const t=S.round===1?`你喊 ${my}`:`你出 ${my}`,tw=c.measureText(t).width+10;c.fillRect(x-tw/2,ax+24,tw,18);c.fillStyle=BLUE;c.textAlign='center';c.fillText(t,x,ax+33);}
+        c.fillStyle=`rgba(${PAPER},.95)`;const t=`你出 ${my}`,tw=c.measureText(t).width+10;c.fillRect(x-tw/2,ax+24,tw,18);c.fillStyle=BLUE;c.textAlign='center';c.fillText(t,x,ax+33);}
       /* 开标：各人的出价、估价、真值 */
       if(S.res){const R=S.res,bids=S.round===3?R.bids:R.bids;
         for(let i=1;i<5;i++){const b=bids[i];if(b==null)continue;const x=X(b),win=R.win===i,y=ax-30-(i%2)*13;c.strokeStyle=win?RED:ink(.45);c.lineWidth=win?2:1;c.beginPath();c.moveTo(x,ax);c.lineTo(x,y);c.stroke();
@@ -127,17 +124,16 @@ export const auctionLevel={
           if(w>=560){c.fillStyle=gain>=0?GREEN:RED;c.textAlign='left';c.fillText(`出到 ${top} 以上就得标，都付 ${top}：${gain>=0?'赚':'赔'} ${Math.abs(gain)}`,Math.min(x0+6,w-230),yb-hh-9);}}}
       rhint.innerHTML=hintText();}
     function hintText(){const L=S.lot;if(S.phase==='ready')return S.round===3?'金线是这件宝物对你值多少':'蓝框是你的眼力：真值多半在这一段';
-      if(S.phase==='live')return S.round===1?`价码 <b>${S.price}</b> 贯，一路往下落 · 空格键也能喊`:S.bid==null?'在尺上点一下出价（左右键微调）':`你出 <b>${S.bid}</b> 贯 · 回车封标`;
+      if(S.phase==='live')return S.bid==null?'在尺上点一下出价（左右键微调）':`你出 <b>${S.bid}</b> 贯 · 回车封标`;
       if(S.phase==='reveal'){const R=S.res;if(!R)return'';const who=R.win<0?'流拍':NAMES[R.win]+'得标';if(S.round===3){const top=Math.max(...L.ai),gain=L.v-top;return `${who}，付第二高的价 <b>${R.price}</b> · 出到 ${top} 以上都得标、都付 ${top}：${gain>=0?'赚':'赔'} ${Math.abs(gain)}`;}return `${who}，价 <b>${R.price}</b> 贯`+(S.showV?`，真值 <b>${L.v}</b>`:'……鉴定中');}
       return'';}
-    function setBidFrom(ev){if(S.phase!=='live'||S.round===1||!RG)return;const r=rcv.getBoundingClientRect(),v=RG.lo+(ev.clientX-r.left-RG.pad)/(RG.w-2*RG.pad)*(RG.hi-RG.lo);S.bid=Math.max(RG.lo,Math.min(RG.hi,Math.round(v)));drawRuler();bidActs();}
+    function setBidFrom(ev){if(S.phase!=='live'||!RG)return;const r=rcv.getBoundingClientRect(),v=RG.lo+(ev.clientX-r.left-RG.pad)/(RG.w-2*RG.pad)*(RG.hi-RG.lo);S.bid=Math.max(RG.lo,Math.min(RG.hi,Math.round(v)));drawRuler();bidActs();}
     let dragging=false;
-    rcv.addEventListener('pointerdown',ev=>{if(S.phase!=='live'||S.round===1)return;dragging=true;try{rcv.setPointerCapture(ev.pointerId);}catch(_){}setBidFrom(ev);audio.tap(2);});
+    rcv.addEventListener('pointerdown',ev=>{if(S.phase!=='live')return;dragging=true;try{rcv.setPointerCapture(ev.pointerId);}catch(_){}setBidFrom(ev);audio.tap(2);});
     rcv.addEventListener('pointermove',ev=>{if(dragging)setBidFrom(ev);});
     const endDrag=()=>{dragging=false;};rcv.addEventListener('pointerup',endDrag);rcv.addEventListener('pointercancel',endDrag);
     const onKey=ev=>{if(!root.isConnected)return;if(S.phase!=='live')return;
-      if(S.round===1&&(ev.key===' '||ev.key==='Enter')){ev.preventDefault();grab();return;}
-      if(S.round>1){const [lo,hi]=range();if(ev.key==='ArrowLeft'||ev.key==='ArrowRight'){ev.preventDefault();const d=(ev.key==='ArrowLeft'?-1:1)*(ev.shiftKey?5:1);S.bid=Math.max(lo,Math.min(hi,(S.bid==null?(S.round===3?S.lot.v:S.lot.est[0]):S.bid)+d));drawRuler();bidActs();}
+      {const [lo,hi]=range();if(ev.key==='ArrowLeft'||ev.key==='ArrowRight'){ev.preventDefault();const d=(ev.key==='ArrowLeft'?-1:1)*(ev.shiftKey?5:1);S.bid=Math.max(lo,Math.min(hi,(S.bid==null?(S.round===3?S.lot.v:S.lot.est[0]):S.bid)+d));drawRuler();bidActs();}
         else if(ev.key==='Enter'&&S.bid!=null){ev.preventDefault();seal(S.bid);}}};
     document.addEventListener('keydown',onKey);
 
@@ -147,31 +143,24 @@ export const auctionLevel={
     const fmt=v=>(v>0?'+':'')+v;
     function lotInfo(){const L=S.lot,n=S.lots.length,k=Math.max(0,S.k);
       lotEl.innerHTML=`<small>第 ${k+1} / ${n} 件</small><b>${L.nm}</b>`+(S.round<3?`<span class="eye ${L.sig<=15?'sharp':L.sig>=45?'blur':''}">眼力 ±${L.sig}${L.sig<=15?' · 看得准':L.sig>=45?' · 看不准':''}</span>`:`<span class="eye">对你值 ${L.v} 贯</span>`)+
-        (S.round>1?`<div class="rc-incense"><span>一炷香</span><div class="stick"><div class="burn"></div></div></div>`:'');}
+        (true?`<div class="rc-incense"><span>一炷香</span><div class="stick"><div class="burn"></div></div></div>`:'');}
 
     /* ---------- 一件件拍 ---------- */
     function clearTimers(){clearInterval(S.timer);clearTimeout(S.autoT);clearTimeout(S.vT);}
-    function beginRound(n){clearTimers();S.round=n;S.lots=[R1,R2,LOTS3][n-1];S.k=-1;S.lot=S.lots[0];S.phase='ready';S.bid=null;S.res=null;S.showV=false;S.raised=[0,0,0,0,0];S.tot=[0,0,0,0,0];S.wins=[0,0,0,0,0];S.truth=0;S.hist=[];
-      rev.hidden=true;priceEl.hidden=true;ui.hideResult();ui.meter('');ui.stageName(TITLE[n-1]);ui.say(INTRO[n-1]);ui.acts([['开始 →',nextLot,true]]);
+    function beginRound(n){clearTimers();S.round=n;S.lots=n===2?R1:R2;S.k=-1;S.lot=S.lots[0];S.phase='ready';S.bid=null;S.res=null;S.showV=false;S.raised=[0,0,0,0,0];S.tot=[0,0,0,0,0];S.wins=[0,0,0,0,0];S.truth=0;S.hist=[];
+      rev.hidden=true;ui.hideResult();ui.meter('');ui.stageName(TITLE[n]);ui.say(INTRO[n]);ui.acts([['开始 →',nextLot,true]]);
       lotInfo();drawLedger();layoutAll();}
     function nextLot(){clearTimers();S.k++;if(S.k>=S.lots.length){endRound();return;}
       S.lot=S.lots[S.k];S.bid=null;S.res=null;S.showV=false;S.raised=[0,0,0,0,0];S.phase='live';lotInfo();drawFg();audio.paper();
-      if(S.round===1){S.price=startOf(S.lot);S.maxAI=Math.max(...[1,2,3,4].map(i=>aiBid(S.lot,i)));priceEl.hidden=false;priceTxt();
-        ui.acts([['要了！',grab,true]]);S.timer=setInterval(tickDutch,reduceMotion()?DUTCH_MS*1.6:DUTCH_MS);}
-      else{S.t0=performance.now();bidActs();S.timer=setInterval(tickBid,100);}
+      {S.t0=performance.now();bidActs();S.timer=setInterval(tickBid,100);}
       drawRuler();}
-    function priceTxt(){priceEl.innerHTML=`<small>落价</small><b>${S.price}</b><small>贯</small>`;}
-    function tickDutch(){if(!root.isConnected){clearTimers();return;}if(S.phase!=='live')return;S.price--;priceTxt();if(S.price%5===0)audio.tap(1);
-      if(S.price<=S.maxAI){const i=[1,2,3,4].filter(j=>aiBid(S.lot,j)===S.maxAI).sort((a,b)=>S.lot.est[b]-S.lot.est[a])[0];S.price=S.maxAI;priceTxt();settle(sealed(S.lot,null),i);return;}
-      drawRuler();}
-    function grab(){if(S.phase!=='live'||S.round!==1)return;const p=S.price,base=sealed(S.lot,null);settle({bids:[p,...base.bids.slice(1)],win:0,price:p,profit:S.lot.v-p},0);}
     function tickBid(){if(!root.isConnected){clearTimers();return;}if(S.phase!=='live')return;const k=Math.max(0,1-(performance.now()-S.t0)/((reduceMotion()?1.6:1)*BID_SECS*1000)),inc=lotEl.querySelector('.rc-incense');
       if(inc){inc.querySelector('.burn').style.width=(k*100)+'%';inc.classList.toggle('low',k<.25);}if(k<=0)seal(S.bid);}
-    function bidActs(){if(S.phase!=='live'||S.round===1)return;ui.acts([['不投这件',()=>seal(null)],[S.bid==null?'封标':`封标 · ${S.bid} 贯`,()=>seal(S.bid),true,S.bid==null]]);}
+    function bidActs(){if(S.phase!=='live')return;ui.acts([['不投这件',()=>seal(null)],[S.bid==null?'封标':`封标 · ${S.bid} 贯`,()=>seal(S.bid),true,S.bid==null]]);}
     function seal(b){if(S.phase!=='live')return;settle(S.round===3?vickrey(S.lot,b):sealed(S.lot,b),null);}
     function settle(R,grabber){clearTimers();S.res=R;S.phase='reveal';const L=S.lot;const inc=lotEl.querySelector('.rc-incense');if(inc)inc.remove();
       if(R.win>0)S.raised[R.win]=1;drawFg();ui.acts([]);
-      if(grabber!=null&&grabber>0){ui.flash('要了！',G.bid[grabber-1],G.by-G.fs*1.2);audio.thud();}else if(grabber===0){audio.coin();ui.flash('要了！',G.tx,G.ty-G.ware*1.1);}else audio.paper();
+      audio.paper();
       if(S.round===3){S.showV=true;const mine=R.win===0?R.profit:0;S.tot[0]+=mine;if(R.win>=0)S.wins[R.win]++;S.truth+=payoffAt(L,L.v);S.hist.push({lot:L,bid:R.bids[0],res:R,mine});
         drawRuler();drawLedger();reveal(mine,R.win===0);return;}
       drawRuler();
@@ -182,14 +171,13 @@ export const auctionLevel={
       const last=S.k>=S.lots.length-1;let left=Math.round(AUTO_MS/1000);
       const acts=()=>ui.acts([[last?`收官 →`:`下一件 → (${left})`,nextLot,true]]);acts();
       clearInterval(S.timer);S.timer=setInterval(()=>{if(!root.isConnected){clearTimers();return;}left--;if(left<=0){nextLot();return;}acts();},1000);}
-    function endRound(){clearTimers();S.phase='done';priceEl.hidden=true;const mine=S.tot[0];
-      const bench=S.round===1?runSealed(R1,expert)[0]:S.round===2?runSealed(R2,expert)[0]:truthful(LOTS3),g=gradeProfit(mine,bench);
+    function endRound(){clearTimers();S.phase='done';const mine=S.tot[0];
+      const bench=S.round===2?runSealed(R1,expert)[0]:truthful(R2),g=gradeProfit(mine,bench);
       g==='至妙'||g==='上品'?audio.arp():g==='下品'?audio.low():audio.bell();
       const nums=S.round<3?`你 <b>${fmt(mine)}</b> 贯 · 行家压法 <b>${fmt(bench)}</b> · 赵莽汉 ${fmt(S.tot[1])}`:`你 <b>${fmt(mine)}</b> 贯 · 照心里的价出 <b>${fmt(bench)}</b>`;
       const wonHigh=S.hist.filter(h=>h.res.win===0&&h.lot.est&&h.lot.est[0]>h.lot.v).length,won=S.hist.filter(h=>h.res.win===0).length;
       let line;
-      if(S.round===1)line=mine<0?`你得标 ${won} 件，其中 ${wonHigh} 件是你估高了的：估得最高的人最容易得标，也最容易估高了。价码落到估价就喊，必亏；要再压低一截。`:g==='至妙'||g==='上品'?'价码落到估价以下一截才喊：估高了的那几件，让给莽汉去赔。':'不亏已是一步。落价与暗标一样：心里先定个比估价低一截的价，到了就喊。';
-      else if(S.round===2)line=mine<0?'看不准的宝物，估价偏得远，得标时多半偏高：眼力 ±45 的要多压，±15 的少压就够。':g==='至妙'||g==='上品'?'看得准的少压，看不准的多压：压多少，跟着眼力走。':'一律压同样多，不如按眼力压：看不准的多压一些。';
+      if(S.round===2)line=mine<0?`你得标 ${won} 件，其中 ${wonHigh} 件是估高了的：估得最高的人最容易得标，也最容易估高了（赢者诅咒）。出价要比估价压低一截，看不准的（±45）压得更多。`:g==='至妙'||g==='上品'?'看得准的少压，看不准的多压：估高了的那几件，让给莽汉去赔。':'一律压同样多，不如按眼力压：看不准的多压一些。';
       else line=mine>=bench?'照心里的价出：出价只决定得不得标，付多少由别人定。':'只付第二高的价时，出多了得标就可能赔，出少了会错过该赚的——照心里的价出最稳妥。';
       ui.result(g,nums,line,false);showReview();
       ui.acts([['再来一回',()=>beginRound(S.round)],S.round<3?['下一回 →',()=>beginRound(S.round+1),true]:['题跋 · 钤印',()=>ui.colophon(),true]]);}
@@ -215,8 +203,8 @@ export const auctionLevel={
     let lastWH='',rq=0;const ro=typeof ResizeObserver!=='undefined'?new ResizeObserver(()=>{cancelAnimationFrame(rq);rq=requestAnimationFrame(()=>{const k=root.clientWidth+'x'+root.clientHeight;if(k!==lastWH){lastWH=k;layoutAll();}});}):null;if(ro)ro.observe(root);
     this._stop=()=>{clearTimers();document.removeEventListener('keydown',onKey);if(ro)ro.disconnect();};
     /* 自动化测试用 */
-    auctionLevel._dbg=S;auctionLevel._go=n=>beginRound(n);auctionLevel._play={next:nextLot,grab,seal,bid:b=>{S.bid=b;drawRuler();bidActs();}};
-    beginRound(1);
+    auctionLevel._dbg=S;auctionLevel._go=n=>beginRound(n+1);auctionLevel._play={next:nextLot,seal,bid:b=>{S.bid=b;drawRuler();bidActs();}};
+    beginRound(2);
   },
   resize(){this._resize&&this._resize();},
   stop(){this._stop&&this._stop();this._resize=null;}

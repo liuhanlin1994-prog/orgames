@@ -55,10 +55,10 @@ function buildScene(){
   D(1950,2300,5,(c,r)=>{c.strokeStyle=`rgba(${INK},.45)`;c.lineWidth=1;c.beginPath();c.moveTo(1990,770);c.lineTo(2240,770);c.stroke();for(let x=1994;x<2240;x+=20){c.beginPath();c.moveTo(x,770);c.lineTo(x,758);c.stroke();}
     for(let i=0;i<7;i++)horseGlyph(c,2010+i*32+r()*10,790+r()*20,13+r()*4,r);person(c,2255,795,15);});
   D(1860,1980,5,(c)=>pagoda(c,1920,742,26,5));
-  /* 窑火：顺坡的龙窑 */
-  D(2350,2480,5,(c)=>{const x0=2365,y0=806,x1=2452,y1=774,n=6;for(let i=0;i<n;i++){const xa=x0+(x1-x0)*i/n,ya=y0+(y1-y0)*i/n,xb=x0+(x1-x0)*(i+1)/n,yb=y0+(y1-y0)*(i+1)/n;
-      c.fillStyle=`rgba(${i%2?'150,95,60':'140,88,56'},.85)`;c.beginPath();c.moveTo(xa,ya);c.quadraticCurveTo((xa+xb)/2,(ya+yb)/2-14,xb,yb);c.lineTo(xb,yb+2);c.lineTo(xa,ya+2);c.fill();c.strokeStyle=`rgba(${INK},.55)`;c.lineWidth=1;c.stroke();}
-    c.fillStyle='rgba(120,70,45,.9)';c.fillRect(x1-3,y1-26,6,26);c.fillStyle=`rgba(${INK},.8)`;c.beginPath();c.arc(x0+2,y0-2,5,Math.PI,0);c.fill();});
+  /* 断桥：江上一座拆断的木桥 */
+  D(2430,2560,5,(c)=>{const y=806;c.strokeStyle=`rgba(${INK},.7)`;c.lineWidth=1.6;
+    [[2440,2482],[2506,2548]].forEach(([x0,x1])=>{c.beginPath();c.moveTo(x0,y);c.quadraticCurveTo((x0+x1)/2,y-10,x1,y-(x1>2500?0:6));c.stroke();for(let x=x0+4;x<x1;x+=8){c.beginPath();c.moveTo(x,y-5);c.lineTo(x,y+8);c.stroke();}});
+    c.fillStyle='rgba(120,70,40,.7)';[[2488,814],[2496,820],[2492,826]].forEach(([x,y2])=>c.fillRect(x,y2,7,2));});
   /* 卷四 · 江海 */
   M({base:640,z:4,a:.8,c:1,cun:1,lw:2.3,trees:1,dot:1.1,peaks:[{x:1760,h:170,wl:160,wr:130,k:1.6},{x:1640,h:95,wl:150,wr:120,k:1.3,round:.04}]});
   D(80,1800,3,(c,r,col)=>waves(c,r,80,1800,600,900,420,col));
@@ -77,9 +77,9 @@ const MISTS=[[6500,560,900,120,110,160],[5600,520,1100,110,95,200],[4700,610,900
 /* 行船：[起点, 终点, 水面高度, 大小, 是否挂帆, 周期秒] */
 const BOATS=[[6150,5000,812,14,0,150],[4380,3920,806,18,1,95],[3000,2480,842,12,0,120],[1650,250,772,24,1,190],[1400,150,858,18,1,230]];
 /* 炊烟：屋舍的烟囱 */
-const SMOKES=[[5990,664],[4400,596],[4750,596],[3715,652],[3410,684],[1920,600],[2452,748]];
+const SMOKES=[[5990,664],[4400,596],[4750,596],[3715,652],[3410,684],[1920,600]];
 /* 卷终题跋里每关的一句 */
-const LESSON={tea:'茶有先后',race:'驷有上下',pack:'箧有取舍',gate:'门有开合',match:'士有良配',inn:'房有留余',auction:'价有虚实',beacon:'燧有远近',kiln:'火有分寸',horse:'马有去留',tsp:'舟有远近',beans:'豆有疏密'};
+const LESSON={tea:'茶有先后',race:'驷有上下',pack:'箧有取舍',gate:'门有开合',match:'士有良配',inn:'房有留余',auction:'价有虚实',beacon:'燧有远近',bridge:'桥有通塞',horse:'马有去留',tsp:'舟有远近'};
 const ease=k=>k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
 
 export function createScroll({levels,audio,onEnter}){
