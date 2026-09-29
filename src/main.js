@@ -13,8 +13,9 @@ import {innLevel} from './levels/inn.js';
 import {packLevel} from './levels/pack.js';
 import {auctionLevel} from './levels/auction.js';
 import {bridgeLevel} from './levels/bridge.js';
+import {beaconLevel} from './levels/beacon.js';
 
-const MODULES={tsp:tspLevel,tea:teaLevel,horse:horseLevel,race:raceLevel,gate:gateLevel,inn:innLevel,pack:packLevel,auction:auctionLevel,bridge:bridgeLevel};
+const MODULES={tsp:tspLevel,tea:teaLevel,horse:horseLevel,race:raceLevel,gate:gateLevel,inn:innLevel,pack:packLevel,auction:auctionLevel,bridge:bridgeLevel,beacon:beaconLevel};
 const audio=createAudio();
 const ui=createLevelUI(audio);
 const store={get:k=>{try{return localStorage.getItem(k);}catch(e){return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}};
@@ -37,7 +38,7 @@ function playFinale(){store.set('qianli_finale_seen','1');scroll.finale(()=>{});
 function setSnd(v){const on=audio.music(v);$('sndBtn').setAttribute('aria-pressed',on);$('sndBtn').textContent=on?'琴声 · 开':'琴声 · 关';}
 $('sndBtn').onclick=()=>setSnd();
 $('previewBtn').onclick=()=>$('previewBtn').setAttribute('aria-pressed',scroll.togglePreview());
-$('nextBtn').onclick=()=>{if(!scroll.next())$('hint').textContent=`已开放的关卡都参透了，其余${'〇一二三四五六七八九'[LEVELS.filter(l=>!l.play).length]||''}处正在绘制`;};
+$('nextBtn').onclick=()=>{if(scroll.next())return;const rest=LEVELS.filter(l=>!l.play).length;$('hint').textContent=rest?`已开放的关卡都参透了，其余${'〇一二三四五六七八九'[rest]||''}处正在绘制`:`${'〇一二三四五六七八九十'[LEVELS.length]||LEVELS.length}处都参透了：点「终卷预览」，或再入画重玩任何一处`;};
 let intro=null;
 $('prologueBtn').onclick=()=>{audio.unlock();intro=playPrologue({audio,onDone:()=>{}});};
 $('finaleBtn').onclick=()=>playFinale();
