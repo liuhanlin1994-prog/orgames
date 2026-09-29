@@ -63,10 +63,12 @@ if(missing.length){
 }
 const woff=path.join(ROOT,'assets','brush.woff2');
 const fontCss=fs.existsSync(woff)?`<style>@font-face{font-family:'QJ Brush';src:url(data:font/woff2;base64,${fs.readFileSync(woff).toString('base64')}) format('woff2');font-display:block}</style>\n`:'';
-const bodyFont='<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap">\n';
+/* 正文宋体：dist/index.html 不连谷歌字体（国内与微信里连不上，会卡住首屏），直接用系统宋体；
+   artifact 片段在 claude.ai 上打开，异步加载思源宋体，加载不到也不耽误显示 */
+const bodyFont='<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" media="print" onload="this.media=\'all\'">\n';
 
 /* 3. 组装 */
-let out=html.replace(/<!--BUILD:FONTS-->[\s\S]*?<!--\/BUILD:FONTS-->/,fontCss+bodyFont)
+let out=html.replace(/<!--BUILD:FONTS-->[\s\S]*?<!--\/BUILD:FONTS-->/,fontCss)
   .replace('<link rel="stylesheet" href="style.css">',`<style>\n${css}</style>`)
   .replace('<script type="module" src="main.js"></script>',()=>`<script>\n${js}\n</script>`);
 fs.mkdirSync(DIST,{recursive:true});
@@ -75,6 +77,6 @@ fs.writeFileSync(path.join(DIST,'index.html'),out);
 const head=out.match(/<head>([\s\S]*?)<\/head>/)[1].replace(/<meta charset="utf-8">\s*/,'').replace(/<meta name="viewport"[^>]*>\s*/,'');
 const body=out.match(/<body>([\s\S]*?)<\/body>/)[1];
 const title=head.match(/<title>[\s\S]*?<\/title>/)[0];
-fs.writeFileSync(path.join(DIST,'artifact.html'),title+'\n'+head.replace(title,'')+body);
+fs.writeFileSync(path.join(DIST,'artifact.html'),title+'\n'+bodyFont+head.replace(title,'')+body);
 const kb=f=>Math.round(fs.statSync(path.join(DIST,f)).size/1024);
 console.log(`dist/index.html ${kb('index.html')} KB · dist/artifact.html ${kb('artifact.html')} KB · ${order.length} 个模块`);
